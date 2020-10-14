@@ -20,8 +20,12 @@ jobs:
         displayName: Cache Yarn packages
 
       - script: |
-          yarn install --frozen-lockfile --check-files
+          yarn install --immutable
         displayName: 'Install dependencies'
+
+      - script: |
+          yarn prepublish
+        displayName: 'Build packages'
 
       - script: |
           yarn testie --forceExit test/integration/production/
@@ -58,8 +62,12 @@ jobs:
         displayName: Cache Yarn packages
 
       - script: |
-          yarn install --frozen-lockfile --check-files
+          yarn install --immutable
         displayName: 'Install dependencies'
+
+      - script: |
+          yarn prepublish
+        displayName: 'Build packages'
 
       - script: |
           node run-tests.js -g $(group) --timings --azure
