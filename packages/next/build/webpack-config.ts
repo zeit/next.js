@@ -969,6 +969,9 @@ export default async function getBaseWebpackConfig(
         'process.env.__NEXT_BUILD_INDICATOR': JSON.stringify(
           config.devIndicators.buildActivity
         ),
+        'process.env.__NEXT_DEV_SERVER_INDICATOR': JSON.stringify(
+          config.devIndicators.devServerBanner
+        ),
         'process.env.__NEXT_PRERENDER_INDICATOR': JSON.stringify(
           config.devIndicators.autoPrerender
         ),

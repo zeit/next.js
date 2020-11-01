@@ -5,6 +5,7 @@ import initOnDemandEntries from './dev/on-demand-entries-client'
 import initWebpackHMR from './dev/webpack-hot-middleware-client'
 import initializeBuildWatcher from './dev/dev-build-watcher'
 import initializePrerenderIndicator from './dev/prerender-indicator'
+import initializeDevServerWatcher from './dev/dev-server-watcher'
 import { displayContent } from './dev/fouc'
 import { getEventSourceWrapper } from './dev/error-overlay/eventsource'
 import * as querystring from '../next-server/lib/router/utils/querystring'
@@ -87,6 +88,7 @@ initNext({ webpackHMR })
     ) {
       initializePrerenderIndicator()
     }
+    if (process.env.__NEXT_DEV_SERVER_INDICATOR) initializeDevServerWatcher()
 
     // delay rendering until after styles have been applied in development
     displayContent(() => {
