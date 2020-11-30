@@ -17,6 +17,8 @@ import {
 } from '../next-server/server/get-page-files'
 import { cleanAmpPath } from '../next-server/server/utils'
 import { htmlEscapeJsonString } from '../server/htmlescape'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 
 export { DocumentContext, DocumentInitialProps, DocumentProps }
 
@@ -149,12 +151,8 @@ export class Head extends Component<
 
   context!: React.ContextType<typeof DocumentComponentContext>
 
-  getCssLinks(files: DocumentFiles): JSX.Element[] | null {
-    const {
-      assetPrefix,
-      devOnlyCacheBusterQueryString,
-      dynamicImports,
-    } = this.context
+  getCssFiles(files: DocumentFiles): string[] {
+    const { dynamicImports } = this.context
     const cssFiles = files.allFiles.filter((f) => f.endsWith('.css'))
     const sharedFiles: Set<string> = new Set(files.sharedFiles)
 
@@ -172,6 +170,43 @@ export class Head extends Component<
       unmangedFiles = new Set(dynamicCssFiles)
       cssFiles.push(...dynamicCssFiles)
     }
+
+    return cssFiles
+  }
+
+  getAmpCss(
+    files: DocumentFiles,
+    curStyles: React.ReactElement[]
+  ): JSX.Element | null {
+    const cssFromFiles = this.getCssFiles(files)
+      .map((file) => readFileSync(join('.next', file), { encoding: 'utf-8' }))
+      .join('')
+      .replace(/\/\*# sourceMappingURL=.*\*\//g, '')
+      .replace(/\/\*@ sourceURL=.*?\*\//g, '')
+    const cssFromElements = curStyles
+      .map((style) => style.props.dangerouslySetInnerHTML.__html)
+      .join('')
+      .replace(/\/\*# sourceMappingURL=.*\*\//g, '')
+      .replace(/\/\*@ sourceURL=.*?\*\//g, '')
+
+    if (cssFromFiles || cssFromElements) {
+      return (
+        <style
+          amp-custom=""
+          dangerouslySetInnerHTML={{
+            __html: `${cssFromFiles}${cssFromElements}`,
+          }}
+        />
+      )
+    }
+
+    return null
+  }
+
+  getCssLinks(files: DocumentFiles): JSX.Element[] | null {
+    const { assetPrefix, devOnlyCacheBusterQueryString } = this.context
+    const cssFiles = this.getCssFiles(files)
+    const sharedFiles = new Set(files.sharedFiles)
 
     const cssLinkElements: JSX.Element[] = []
     cssFiles.forEach((file) => {
@@ -455,17 +490,12 @@ export class Head extends Component<
               href="https://cdn.ampproject.org/v0.js"
             />
             {/* Add custom styles before AMP styles to prevent accidental overrides */}
-            {styles && (
-              <style
-                amp-custom=""
-                dangerouslySetInnerHTML={{
-                  __html: curStyles
-                    .map((style) => style.props.dangerouslySetInnerHTML.__html)
-                    .join('')
-                    .replace(/\/\*# sourceMappingURL=.*\*\//g, '')
-                    .replace(/\/\*@ sourceURL=.*?\*\//g, ''),
-                }}
-              />
+            {this.getAmpCss(files, curStyles)}
+            {this.context.isDevelopment && (
+              // this element is used to mount development styles so the
+              // ordering matches production
+              // (by default, style-loader injects at the bottom of <head />)
+              <style amp-custom="" id="__next_css__DO_NOT_USE__" />
             )}
             <style
               amp-boilerplate=""
