@@ -2623,12 +2623,6 @@
   version "4.1.5"
   resolved "https://registry.yarnpkg.com/@types/debug/-/debug-4.1.5.tgz#b14efa8852b7768d898906613c23f688713e02cd"
 
-"@types/dotenv@8.2.0":
-  version "8.2.0"
-  resolved "https://registry.yarnpkg.com/@types/dotenv/-/dotenv-8.2.0.tgz#5cd64710c3c98e82d9d15844375a33bf1b45d053"
-  dependencies:
-    dotenv "*"
-
 "@types/eslint-visitor-keys@^1.0.0":
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/@types/eslint-visitor-keys/-/eslint-visitor-keys-1.0.0.tgz#1ee30d79544ca84d68d4b3cdb0af4f205663dd2d"
@@ -3188,10 +3182,10 @@
   version "4.2.2"
   resolved "https://registry.yarnpkg.com/@xtuc/long/-/long-4.2.2.tgz#d291c6a4e97989b5c61d9acf396ae4fe133a718d"
 
-"@zeit/ncc@0.20.4":
-  version "0.20.4"
-  resolved "https://registry.yarnpkg.com/@zeit/ncc/-/ncc-0.20.4.tgz#00f0a25a88cac3712af4ba66561d9e281c6f05c9"
-  integrity sha512-fmq+F/QxPec+k/zvT7HiVpk7oiGFseS6brfT/AYqmCUp6QFRK7vZf2Ref46MImsg/g2W3g5X6SRvGRmOAvEfdA==
+"@zeit/ncc@^0.20.4":
+  version "0.20.5"
+  resolved "https://registry.yarnpkg.com/@zeit/ncc/-/ncc-0.20.5.tgz#a41af6e6bcab4a58f4612bae6137f70bce0192e3"
+  integrity sha512-XU6uzwvv95DqxciQx+aOLhbyBx/13ky+RK1y88Age9Du3BlA4mMPCy13BGjayOrrumOzlq1XV3SD/BWiZENXlw==
 
 "@zeit/next-css@1.0.2-canary.2":
   version "1.0.2-canary.2"
@@ -6220,14 +6214,6 @@ dot-prop@^5.0.0:
   resolved "https://registry.yarnpkg.com/dot-prop/-/dot-prop-5.2.0.tgz#c34ecc29556dc45f1f4c22697b6f4904e0cc4fcb"
   dependencies:
     is-obj "^2.0.0"
-
-dotenv-expand@5.1.0:
-  version "5.1.0"
-  resolved "https://registry.yarnpkg.com/dotenv-expand/-/dotenv-expand-5.1.0.tgz#3fbaf020bfd794884072ea26b1e9791d45a629f0"
-
-dotenv@*, dotenv@8.2.0:
-  version "8.2.0"
-  resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-8.2.0.tgz#97e619259ada750eea3e4ea3e26bceea5424b16a"
 
 duplexer3@^0.1.4:
   version "0.1.4"
@@ -14840,6 +14826,11 @@ slide@^1.1.6:
 smart-buffer@^4.1.0:
   version "4.1.0"
   resolved "https://registry.yarnpkg.com/smart-buffer/-/smart-buffer-4.1.0.tgz#91605c25d91652f4661ea69ccf45f1b331ca21ba"
+
+snackables-next@1.1.1:
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/snackables-next/-/snackables-next-1.1.1.tgz#cfe586e0b84be801fbf6e1224be9f44289f3069b"
+  integrity sha512-gpzirh9RFLfnHmQG8u6ijq5R9wb/pl1TaIN/rD4f4AQXAJwktSjFczLaVb89EOjQTi66ZXetv/hfXP38fJ8hig==
 
 snake-case@^2.1.0:
   version "2.1.0"
