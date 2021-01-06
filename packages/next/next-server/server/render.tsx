@@ -122,6 +122,9 @@ class ServerRouter implements NextRouter {
   beforePopState() {
     noRouter()
   }
+  disableBfCache() {
+    noRouter()
+  }
 }
 
 function enhanceComponents(
