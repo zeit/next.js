@@ -1080,7 +1080,8 @@ export default class Server {
       pageModule,
       this.renderOpts.previewProps,
       false,
-      this.onErrorMiddleware
+      this.onErrorMiddleware,
+      this.nextConfig
     )
     return true
   }
