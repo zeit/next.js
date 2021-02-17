@@ -638,6 +638,14 @@ const runTests = (isDev = false) => {
         dataRoutes: [],
         redirects: [
           {
+            regex: normalizeRegEx(
+              '^(?:\\/((?:[^\\/]+?)(?:\\/(?:[^\\/]+?))*))?\\/(\\/+)(|.*\\/[^\\/.]+|[^\\/.]+)$'
+            ),
+            source: '/:before*/{(/+)}:after(|.*/[^/.]+|[^/.]+)',
+            destination: '/:before*/:after',
+            statusCode: 308,
+          },
+          {
             destination: '/:path+',
             regex: normalizeRegEx(
               '^(?:\\/((?:[^\\/]+?)(?:\\/(?:[^\\/]+?))*))\\/$'

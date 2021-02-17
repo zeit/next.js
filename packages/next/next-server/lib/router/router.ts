@@ -4,7 +4,7 @@ import { ParsedUrlQuery } from 'querystring'
 import { ComponentType } from 'react'
 import { UrlObject } from 'url'
 import {
-  normalizePathTrailingSlash,
+  normalizePathSlashes,
   removePathTrailingSlash,
 } from '../../../client/normalize-trailing-slash'
 import { GoodPageCache, StyleSheetTuple } from '../../../client/page-loader'
@@ -80,7 +80,7 @@ function buildCancellationError() {
 function addPathPrefix(path: string, prefix?: string) {
   return prefix && path.startsWith('/')
     ? path === '/'
-      ? normalizePathTrailingSlash(prefix)
+      ? normalizePathSlashes(prefix)
       : `${prefix}${pathNoQueryHash(path) === '/' ? path.substring(1) : path}`
     : path
 }
@@ -270,8 +270,8 @@ export function resolveHref(
     return (resolveAs ? [urlAsString] : urlAsString) as string
   }
   try {
-    const finalUrl = new URL(urlAsString, base)
-    finalUrl.pathname = normalizePathTrailingSlash(finalUrl.pathname)
+    const finalUrl = new URL(urlAsString.replace(/^\/+/, '/'), base)
+    finalUrl.pathname = normalizePathSlashes(finalUrl.pathname)
     let interpolatedAs = ''
 
     if (

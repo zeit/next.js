@@ -510,6 +510,14 @@ export default async function loadCustomRoutes(
     }
   }
 
+  // multiple slashes redirect
+  redirects.unshift({
+    source: '/:before*/{(/+)}:after(|.*/[^/.]+|[^/.]+)',
+    destination: '/:before*/:after',
+    permanent: true,
+    locale: config.i18n ? false : undefined,
+  } as Redirect)
+
   return {
     headers,
     rewrites,
