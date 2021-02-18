@@ -1,7 +1,8 @@
 import { IncomingMessage, ServerResponse } from 'http'
 import { parse } from 'next/dist/compiled/content-type'
 import { CookieSerializeOptions } from 'next/dist/compiled/cookie'
-import getRawBody from 'raw-body'
+import getStream from 'get-stream'
+import bytes from 'bytes'
 import { PageConfig } from 'next/types'
 import { Stream } from 'stream'
 import { isResSent, NextApiRequest, NextApiResponse } from '../lib/utils'
@@ -124,16 +125,17 @@ export async function parseBody(
   let buffer
 
   try {
-    buffer = await getRawBody(req, { encoding, limit })
+    const maxBuffer = bytes.parse(limit)
+    buffer = await getStream.buffer(req, { maxBuffer })
   } catch (e) {
-    if (e.type === 'entity.too.large') {
+    if (e.name === 'MaxBufferError') {
       throw new ApiError(413, `Body exceeded ${limit} limit`)
     } else {
       throw new ApiError(400, 'Invalid body')
     }
   }
 
-  const body = buffer.toString()
+  const body = buffer.toString(encoding)
 
   if (type === 'application/json' || type === 'application/ld+json') {
     return parseJson(body)
