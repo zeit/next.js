@@ -8,6 +8,7 @@ import {
   VALID_LOADERS,
 } from '../next-server/server/image-config'
 import { useIntersection } from './use-intersection'
+import { normalizePathTrailingSlash } from './normalize-trailing-slash'
 
 if (typeof window === 'undefined') {
   ;(global as any).__NEXT_IMAGE_IMPORTED = true
@@ -540,5 +541,7 @@ function defaultLoader({
     }
   }
 
-  return `${root}?url=${encodeURIComponent(src)}&w=${width}&q=${quality || 75}`
+  return `${normalizePathTrailingSlash(root)}?url=${encodeURIComponent(
+    src
+  )}&w=${width}&q=${quality || 75}`
 }
