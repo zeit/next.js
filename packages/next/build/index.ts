@@ -25,6 +25,7 @@ import loadCustomRoutes, {
 import { nonNullable } from '../lib/non-nullable'
 import { recursiveDelete } from '../lib/recursive-delete'
 import { verifyTypeScriptSetup } from '../lib/verifyTypeScriptSetup'
+import tailwindCssManager from '../lib/tailwind-css-manager'
 import {
   BUILD_ID_FILE,
   BUILD_MANIFEST,
@@ -184,7 +185,7 @@ export default async function build(
     await traceAsyncFn(tracer.startSpan('verify-typescript-setup'), () =>
       verifyTypeScriptSetup(dir, pagesDir, !ignoreTypeScriptErrors)
     )
-
+    await tailwindCssManager.init(dir)
     const isLikeServerless = isTargetLikeServerless(target)
 
     const pagePaths: string[] = await traceAsyncFn(
