@@ -22,6 +22,7 @@ export type ImageLoaderProps = {
   src: string
   width: number
   quality?: number
+  format?: string
 }
 
 type DefaultImageLoaderProps = ImageLoaderProps & { root: string }
@@ -34,6 +35,7 @@ const loaders = new Map<
   ['cloudinary', cloudinaryLoader],
   ['akamai', akamaiLoader],
   ['default', defaultLoader],
+  ['contentstack', contentstackLoader],
 ])
 
 const VALID_LAYOUT_VALUES = [
@@ -54,6 +56,7 @@ export type ImageProps = Omit<
   src: string
   loader?: ImageLoader
   quality?: number | string
+  format?: string
   priority?: boolean
   loading?: LoadingValue
   unoptimized?: boolean
@@ -141,6 +144,7 @@ type GenImgAttrsData = {
   loader: ImageLoader
   width?: number
   quality?: number
+  format?: string
   sizes?: string
 }
 
@@ -156,6 +160,7 @@ function generateImgAttrs({
   layout,
   width,
   quality,
+  format,
   sizes,
   loader,
 }: GenImgAttrsData): GenImgAttrsResult {
@@ -167,12 +172,12 @@ function generateImgAttrs({
   const last = widths.length - 1
 
   return {
-    src: loader({ src, quality, width: widths[last] }),
+    src: loader({ src, quality, width: widths[last], format }),
     sizes: !sizes && kind === 'w' ? '100vw' : sizes,
     srcSet: widths
       .map(
         (w, i) =>
-          `${loader({ src, quality, width: w })} ${
+          `${loader({ src, quality, width: w, format })} ${
             kind === 'w' ? w : i + 1
           }${kind}`
       )
@@ -210,6 +215,7 @@ export default function Image({
   loading,
   className,
   quality,
+  format,
   width,
   height,
   objectFit,
@@ -400,6 +406,7 @@ export default function Image({
       layout,
       width: widthInt,
       quality: qualityInt,
+      format,
       sizes,
       loader,
     })
@@ -506,6 +513,46 @@ function cloudinaryLoader({
   const params = ['f_auto', 'c_limit', 'w_' + width, 'q_' + (quality || 'auto')]
   let paramsString = params.join(',') + '/'
   return `${root}${paramsString}${normalizeSrc(src)}`
+}
+
+function assetExtension(src: string): string {
+  return src.slice((Math.max(0, src.lastIndexOf('.')) || Infinity) + 1)
+}
+
+function queryParams(params: string): string {
+  return Object.keys(params)
+    .map((key: any) => `${key}=${params[key]}`)
+    .join('&')
+}
+
+function contentstackLoader({
+  src,
+  width,
+  quality,
+  format,
+}: DefaultImageLoaderProps): string {
+  // Demo: https://images.contentstack.io/v3/assets/blteae40eb499811073/bltc5064f36b5855343/59e0c41ac0eddd140d5a8e3e/owl.jpg?format=pjpg&auto=webp&quality=75
+  let params: any = {
+    auto: 'webp',
+    format: format || assetExtension(src),
+    quality: quality || 75,
+  }
+
+  if (!/(gif|png|svg)/gi.test(params.format)) {
+    params.format = format || 'pjpg'
+  }
+
+  if (width) {
+    params['width'] = width
+  }
+
+  let queryString = queryParams(params)
+
+  if (/(svg)/gi.test(params.format)) {
+    return `${normalizeSrc(src)}`
+  }
+
+  return `${src}?${queryString}`
 }
 
 function defaultLoader({
