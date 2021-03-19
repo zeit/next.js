@@ -924,7 +924,9 @@ export default async function getBaseWebpackConfig(
           : []),
         {
           test: /\.(tsx|ts|js|mjs|jsx)$/,
-          include: [dir, ...babelIncludeRegexes],
+          include: resolvedBaseUrl
+            ? [resolvedBaseUrl, dir, ...babelIncludeRegexes]
+            : [dir, ...babelIncludeRegexes],
           exclude: (excludePath: string) => {
             if (babelIncludeRegexes.some((r) => r.test(excludePath))) {
               return false
