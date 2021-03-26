@@ -1,4 +1,4 @@
-import { promises, readFileSync } from 'fs'
+import { promises, readFileSync, existsSync, unlinkSync } from 'fs'
 import LRUCache from 'next/dist/compiled/lru-cache'
 import path from 'path'
 import { PrerenderManifest } from '../../build'
@@ -208,6 +208,57 @@ export class IncrementalCache {
         // failed to flush to disk
         console.warn('Failed to update prerender files for', pathname, error)
       }
+    }
+  }
+
+  resetKeys(pagesToRefresh: string[], locales: string[]): void {
+    try {
+      let keysToRemove: string[] = []
+
+      const pagesToRefreshPaths = pagesToRefresh.map((page) =>
+        page.startsWith('/') ? page : path.join('/', page)
+      )
+
+      const pagesToRefreshPathsWithLocales =
+        locales.length > 0
+          ? pagesToRefreshPaths
+              .map((pagePath) =>
+                locales.map((locale) => {
+                  // Root pages are just locale
+                  if (pagePath === '/index') {
+                    return path.join('/', locale)
+                  }
+
+                  return path.join('/', locale, pagePath)
+                })
+              )
+              .flat()
+          : pagesToRefreshPaths
+
+      keysToRemove = pagesToRefreshPathsWithLocales
+
+      // Remove cache entries
+      this.cache.forEach((_, key) => {
+        if (keysToRemove.includes(key)) {
+          this.cache.del(key)
+        }
+      })
+
+      // Remove generated files
+      pagesToRefreshPathsWithLocales.forEach((pathname) => {
+        const htmlFilePath = this.getSeedPath(pathname, 'html')
+        const jsonFilePath = this.getSeedPath(pathname, 'json')
+
+        if (existsSync(htmlFilePath)) {
+          unlinkSync(htmlFilePath)
+        }
+
+        if (existsSync(jsonFilePath)) {
+          unlinkSync(jsonFilePath)
+        }
+      })
+    } catch (error) {
+      throw error
     }
   }
 }
