@@ -1,5 +1,5 @@
 import chalk from 'chalk'
-import { findConfig } from '../../../../../lib/find-config'
+import { findConfigSync } from '../../../../../lib/find-config'
 import browserslist from 'browserslist'
 
 type CssPluginCollection_Array = (string | [string, boolean | object])[]
@@ -42,11 +42,11 @@ function isIgnoredPlugin(pluginPath: string): boolean {
   return true
 }
 
-async function loadPlugin(
+function loadPlugin(
   dir: string,
   pluginName: string,
   options: boolean | object
-): Promise<import('postcss').AcceptedPlugin | false> {
+): import('postcss').AcceptedPlugin | false {
   if (options === false || isIgnoredPlugin(pluginName)) {
     return false
   }
@@ -103,14 +103,14 @@ function getDefaultPlugins(
   ]
 }
 
-export async function getPostCssPlugins(
+export function getPostCssPlugins(
   dir: string,
   isProduction: boolean,
   defaults: boolean = false
-): Promise<import('postcss').AcceptedPlugin[]> {
+): import('postcss').AcceptedPlugin[] {
   let config = defaults
     ? null
-    : await findConfig<{ plugins: CssPluginCollection }>(dir, 'postcss')
+    : findConfigSync<{ plugins: CssPluginCollection }>(dir, 'postcss')
 
   if (config == null) {
     config = { plugins: getDefaultPlugins(dir, isProduction) }
@@ -216,9 +216,7 @@ export async function getPostCssPlugins(
     }
   })
 
-  const resolved = await Promise.all(
-    parsed.map((p) => loadPlugin(dir, p[0], p[1]))
-  )
+  const resolved = parsed.map((p) => loadPlugin(dir, p[0], p[1]))
   const filtered: import('postcss').AcceptedPlugin[] = resolved.filter(
     Boolean
   ) as import('postcss').AcceptedPlugin[]

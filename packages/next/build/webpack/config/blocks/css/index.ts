@@ -12,6 +12,7 @@ import {
   getLocalModuleImportError,
 } from './messages'
 import { getPostCssPlugins } from './plugins'
+import type { AcceptedPlugin } from 'postcss'
 
 // RegExps for all Style Sheet variants
 const regexLikeCss = /\.(css|scss|sass)$/
@@ -75,11 +76,16 @@ export const css = curry(async function css(
     }),
   ]
 
-  const postCssPlugins = await getPostCssPlugins(
-    ctx.rootDirectory,
-    ctx.isProduction,
-    !ctx.future.strictPostcssConfiguration
-  )
+  let postCssPlugins: AcceptedPlugin[]
+  const postCssPluginsFactory = () => {
+    if (postCssPlugins === undefined)
+      postCssPlugins = getPostCssPlugins(
+        ctx.rootDirectory,
+        ctx.isProduction,
+        !ctx.future.strictPostcssConfiguration
+      )
+    return postCssPlugins
+  }
 
   // CSS cannot be imported in _document. This comes before everything because
   // global CSS nor CSS modules work in said file.
@@ -121,7 +127,7 @@ export const css = curry(async function css(
             and: [ctx.rootDirectory],
             not: [/node_modules/],
           },
-          use: getCssModuleLoader(ctx, postCssPlugins),
+          use: getCssModuleLoader(ctx, postCssPluginsFactory),
         },
       ],
     })
@@ -144,7 +150,11 @@ export const css = curry(async function css(
             and: [ctx.rootDirectory],
             not: [/node_modules/],
           },
-          use: getCssModuleLoader(ctx, postCssPlugins, sassPreprocessors),
+          use: getCssModuleLoader(
+            ctx,
+            postCssPluginsFactory,
+            sassPreprocessors
+          ),
         },
       ],
     })
@@ -202,7 +212,7 @@ export const css = curry(async function css(
               and: [ctx.rootDirectory],
               not: [/node_modules/],
             },
-            use: getGlobalCssLoader(ctx, postCssPlugins),
+            use: getGlobalCssLoader(ctx, postCssPluginsFactory),
           },
         ],
       })
@@ -220,7 +230,7 @@ export const css = curry(async function css(
               sideEffects: true,
               test: regexCssGlobal,
               issuer: { and: [ctx.customAppFile] },
-              use: getGlobalCssLoader(ctx, postCssPlugins),
+              use: getGlobalCssLoader(ctx, postCssPluginsFactory),
             },
           ],
         })
@@ -236,7 +246,11 @@ export const css = curry(async function css(
               sideEffects: true,
               test: regexSassGlobal,
               issuer: { and: [ctx.customAppFile] },
-              use: getGlobalCssLoader(ctx, postCssPlugins, sassPreprocessors),
+              use: getGlobalCssLoader(
+                ctx,
+                postCssPluginsFactory,
+                sassPreprocessors
+              ),
             },
           ],
         })

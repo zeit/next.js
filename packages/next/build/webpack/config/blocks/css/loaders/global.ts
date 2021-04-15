@@ -3,10 +3,11 @@ import { webpack } from 'next/dist/compiled/webpack/webpack'
 import { ConfigurationContext } from '../../../utils'
 import { getClientStyleLoader } from './client'
 import { cssFileResolve } from './file-resolve'
+import { getPostCssLoader } from './getPostCssLoader'
 
 export function getGlobalCssLoader(
   ctx: ConfigurationContext,
-  postCssPlugins: readonly AcceptedPlugin[],
+  postCssPluginsFactory: () => readonly AcceptedPlugin[],
   preProcessors: readonly webpack.RuleSetUseItem[] = []
 ): webpack.RuleSetUseItem[] {
   const loaders: webpack.RuleSetUseItem[] = []
@@ -37,13 +38,7 @@ export function getGlobalCssLoader(
   })
 
   // Compile CSS
-  loaders.push({
-    loader: require.resolve('next/dist/compiled/postcss-loader'),
-    options: {
-      postcssOptions: { plugins: postCssPlugins, config: false },
-      sourceMap: true,
-    },
-  })
+  loaders.push(getPostCssLoader(postCssPluginsFactory))
 
   loaders.push(
     // Webpack loaders run like a stack, so we need to reverse the natural

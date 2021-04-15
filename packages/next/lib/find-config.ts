@@ -48,3 +48,43 @@ export async function findConfig<T>(
 
   return null
 }
+
+export function findConfigSync<T>(
+  directory: string,
+  key: string
+): RecursivePartial<T> | null {
+  // `package.json` configuration always wins. Let's check that first.
+  const packageJsonPath = findUp.sync('package.json', { cwd: directory })
+  if (packageJsonPath) {
+    const packageJson = require(packageJsonPath)
+    if (packageJson[key] != null && typeof packageJson[key] === 'object') {
+      return packageJson[key]
+    }
+  }
+
+  // If we didn't find the configuration in `package.json`, we should look for
+  // known filenames.
+  const filePath = findUp.sync(
+    [
+      `.${key}rc.json`,
+      `${key}.config.json`,
+      `.${key}rc.js`,
+      `${key}.config.js`,
+    ],
+    {
+      cwd: directory,
+    }
+  )
+  if (filePath) {
+    if (filePath.endsWith('.js')) {
+      return require(filePath)
+    }
+
+    // We load JSON contents with JSON5 to allow users to comment in their
+    // configuration file. This pattern was popularized by TypeScript.
+    const fileContents = fs.readFileSync(filePath, 'utf8')
+    return JSON5.parse(fileContents)
+  }
+
+  return null
+}
