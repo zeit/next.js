@@ -329,7 +329,7 @@ export default async function getBaseWebpackConfig(
   // jsconfig is a subset of tsconfig
   if (useTypeScript) {
     const ts = (await import(typeScriptPath!)) as typeof import('typescript')
-    const tsConfig = await getTypeScriptConfiguration(ts, tsConfigPath)
+    const tsConfig = await getTypeScriptConfiguration(ts, tsConfigPath, true)
     jsConfig = { compilerOptions: tsConfig.options }
   }
 
@@ -1480,7 +1480,7 @@ export default async function getBaseWebpackConfig(
       )
     }
   } else if (!config.future.strictPostcssConfiguration) {
-    await __overrideCssConfiguration(dir, !dev, webpackConfig)
+    __overrideCssConfiguration(dir, !dev, webpackConfig)
   }
 
   // Inject missing React Refresh loaders so that development mode is fast:
