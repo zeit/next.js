@@ -53,6 +53,7 @@ describe('Client Navigation', () => {
       '/nav/querystring',
       '/nav/self-reload',
       '/nav/hash-changes',
+      '/add-prefix-slash',
       '/nav/shallow-routing',
       '/nav/redirect',
       '/nav/as-path',
@@ -1571,6 +1572,13 @@ describe('Client Navigation', () => {
     )
 
     expect(value).toBe(false)
+  })
+
+  it('should add prefix slash', async () => {
+    const browser = await webdriver(context.appPort, '/add-prefix-slash')
+    expect(await browser.elementByCss('a').text()).toBe('Add prefix slash')
+
+    await browser.close()
   })
 
   renderingSuite(

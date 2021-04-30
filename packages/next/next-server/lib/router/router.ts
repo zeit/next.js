@@ -270,8 +270,6 @@ export function resolveHref(
   href: Url,
   resolveAs?: boolean
 ): string {
-  // we use a dummy base url for relative urls
-  const base = new URL(currentPath, 'http://n')
   const urlAsString =
     typeof href === 'string' ? href : formatWithValidation(href)
   // Return because it cannot be routed by the Next.js router
@@ -279,6 +277,8 @@ export function resolveHref(
     return (resolveAs ? [urlAsString] : urlAsString) as string
   }
   try {
+    // we use a dummy base url for relative urls
+    const base = new URL(currentPath, 'http://n')
     const finalUrl = new URL(urlAsString, base)
     finalUrl.pathname = normalizePathTrailingSlash(finalUrl.pathname)
     let interpolatedAs = ''
@@ -308,7 +308,7 @@ export function resolveHref(
     // if the origin didn't change, it means we received a relative href
     const resolvedHref =
       finalUrl.origin === base.origin
-        ? finalUrl.href.slice(finalUrl.origin.length)
+        ? finalUrl.href.slice(finalUrl.origin.length + 1)
         : finalUrl.href
 
     return (resolveAs
