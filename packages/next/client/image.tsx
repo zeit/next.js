@@ -80,6 +80,7 @@ const {
   loader: configLoader,
   path: configPath,
   domains: configDomains,
+  quality: configQuality,
 } =
   ((process.env.__NEXT_IMAGE_OPTS as any) as ImageConfig) || imageConfigDefault
 // sort smallest to largest
@@ -531,7 +532,7 @@ function cloudinaryLoader({
   quality,
 }: DefaultImageLoaderProps): string {
   // Demo: https://res.cloudinary.com/demo/image/upload/w_300,c_limit,q_auto/turtles.jpg
-  const params = ['f_auto', 'c_limit', 'w_' + width, 'q_' + (quality || 'auto')]
+  const params = ['f_auto', 'c_limit', 'w_' + width, 'q_' + (quality || configQuality || 'auto')]
   let paramsString = params.join(',') + '/'
   return `${root}${paramsString}${normalizeSrc(src)}`
 }
@@ -585,5 +586,5 @@ function defaultLoader({
     }
   }
 
-  return `${root}?url=${encodeURIComponent(src)}&w=${width}&q=${quality || 75}`
+  return `${root}?url=${encodeURIComponent(src)}&w=${width}&q=${quality || configQuality || imageConfigDefault.quality}`
 }
