@@ -61,6 +61,7 @@ export type NextConfig = { [key: string]: any } & {
     turboMode: boolean
     eslint?: boolean
     reactRoot: boolean
+    concurrentFeatures: boolean
   }
 }
 
@@ -117,6 +118,8 @@ export const defaultConfig: NextConfig = {
     turboMode: false,
     eslint: false,
     reactRoot: Number(process.env.NEXT_PRIVATE_REACT_ROOT) > 0,
+    concurrentFeatures:
+      Number(process.env.NEXT_PRIVATE_CONCURRENT_FEATURES) > 0,
   },
   future: {
     strictPostcssConfiguration: false,
