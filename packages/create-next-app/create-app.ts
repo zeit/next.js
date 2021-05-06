@@ -176,6 +176,14 @@ export async function createApp({
       JSON.stringify(packageJson, null, 2) + os.EOL
     )
 
+    // Copy Yarn.lock file
+    if (useYarn) {
+      fs.copyFileSync(
+        path.resolve(__dirname, 'yarn.lock.cached'),
+        path.join(root, 'yarn.lock')
+      )
+    }
+
     console.log(
       `Installing ${chalk.cyan('react')}, ${chalk.cyan(
         'react-dom'
