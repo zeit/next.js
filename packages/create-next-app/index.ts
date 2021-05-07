@@ -5,7 +5,8 @@ import Commander from 'commander'
 import path from 'path'
 import prompts from 'prompts'
 import checkForUpdate from 'update-check'
-import { createApp, DownloadError } from './create-app'
+import { createApp, NextCreateOptions } from './create-app'
+import { DownloadError } from './helpers/install/types'
 import { shouldUseYarn } from './helpers/should-use-yarn'
 import { validateNpmName } from './helpers/validate-pkg'
 import packageJson from './package.json'
@@ -19,7 +20,27 @@ const program = new Commander.Command(packageJson.name)
   .action((name) => {
     projectPath = name
   })
-  .option('--use-npm', 'Explicitly tell the CLI to bootstrap the app using npm')
+  .option(
+    '--ts, --typescript',
+    `
+
+  Initialize as a TypeScript project.
+`
+  )
+  .option(
+    '--tw, --tailwind',
+    `
+
+  Initialize with Tailwind.
+`
+  )
+  .option(
+    '--use-npm',
+    `
+
+  Explicitly tell the CLI to bootstrap the app using npm
+`
+  )
   .option(
     '-e, --example [name]|[github-url]',
     `
@@ -107,12 +128,26 @@ async function run(): Promise<void> {
   }
 
   const example = typeof program.example === 'string' && program.example.trim()
+
+  /**
+   * These CreateOptions will change how the installation proceeds, i.e. whether
+   * to use TypeScript templates, or whether to add Tailwind templates
+   * afterward.
+   */
+  const options: NextCreateOptions = {
+    typescript: program.typescript,
+    tailwind: program.tailwind,
+  }
+  /**
+   * Create the app with the given configuration.
+   */
   try {
     await createApp({
       appPath: resolvedProjectPath,
       useNpm: !!program.useNpm,
       example: example && example !== 'default' ? example : undefined,
       examplePath: program.examplePath,
+      options,
     })
   } catch (reason) {
     if (!(reason instanceof DownloadError)) {
@@ -131,7 +166,11 @@ async function run(): Promise<void> {
       throw reason
     }
 
-    await createApp({ appPath: resolvedProjectPath, useNpm: !!program.useNpm })
+    await createApp({
+      appPath: resolvedProjectPath,
+      useNpm: !!program.useNpm,
+      options,
+    })
   }
 }
 
