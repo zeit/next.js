@@ -8,10 +8,13 @@ type WithInAmpMode = {
   inAmpMode?: boolean
 }
 
+const DEFAULT_CHARSET = <meta charSet="utf-8" />
+const DEFAULT_VIEWPORT = <meta name="viewport" content="width=device-width" />
+
 export function defaultHead(inAmpMode = false): JSX.Element[] {
-  const head = [<meta charSet="utf-8" />]
+  const head = [DEFAULT_CHARSET]
   if (!inAmpMode) {
-    head.push(<meta name="viewport" content="width=device-width" />)
+    head.push(DEFAULT_VIEWPORT)
   }
   return head
 }
@@ -120,8 +123,12 @@ function unique() {
 function reduceComponents(
   headElements: Array<React.ReactElement<any>>,
   props: WithInAmpMode
-) {
-  return headElements
+): { components: JSX.Element[]; safetyViolations: string[] } {
+  const safetyViolations: Set<string> = new Set()
+  if (process.env.NODE_ENV !== 'production' && headElements.length > 1) {
+    safetyViolations.add('More than one instance of <Head>')
+  }
+  const components = headElements
     .reduce(
       (list: React.ReactChild[], headElement: React.ReactElement<any>) => {
         const headElementChildren = React.Children.toArray(
@@ -136,6 +143,47 @@ function reduceComponents(
     .concat(defaultHead(props.inAmpMode))
     .filter(unique())
     .reverse()
+    .map((c) => {
+      if (
+        process.env.NODE_ENV !== 'production' &&
+        !(c === DEFAULT_CHARSET || c === DEFAULT_VIEWPORT)
+      ) {
+        function isCustomReactElement(elem: React.ReactElement<any>) {
+          return typeof elem.type !== 'string'
+        }
+
+        function isSafeNativeElement(elem: React.ReactElement<any>) {
+          if (elem.type === 'title') {
+            return true
+          }
+          if (
+            elem.type === 'link' &&
+            ['preload', 'preconnect'].includes(elem.props.rel)
+          ) {
+            return true
+          }
+          if (
+            elem.type === 'meta' &&
+            /author|description|keywords|og:|twitter:|robots/.test(
+              elem.props.name
+            )
+          ) {
+            return true
+          }
+          return false
+        }
+
+        if (isCustomReactElement(c)) {
+          safetyViolations.add('Custom React Element')
+        } else if (!isSafeNativeElement(c)) {
+          const { renderToStaticMarkup } = require('react-dom/server')
+          safetyViolations.add(
+            `Behavioral Element (${renderToStaticMarkup(c)})`
+          )
+        }
+      }
+      return c
+    })
     .map((c: React.ReactElement<any>, i: number) => {
       const key = c.key || i
       if (
@@ -164,6 +212,7 @@ function reduceComponents(
       }
       return React.cloneElement(c, { key })
     })
+  return { components, safetyViolations: Array.from(safetyViolations) }
 }
 
 /**
