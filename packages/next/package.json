@@ -98,6 +98,7 @@
     "postcss": "8.2.13",
     "process": "0.11.10",
     "prop-types": "15.7.2",
+    "puppeteer-core": "7.1.0",
     "querystring-es3": "0.2.1",
     "raw-body": "2.4.1",
     "react-is": "16.13.1",

@@ -87,6 +87,7 @@ import { normalizeLocalePath } from '../lib/i18n/normalize-locale-path'
 import { detectLocaleCookie } from '../lib/i18n/detect-locale-cookie'
 import * as Log from '../../build/output/log'
 import { imageOptimizer } from './image-optimizer'
+import { ogImageGenerator } from './og-image-generator'
 import { detectDomainLocale } from '../lib/i18n/detect-domain-locale'
 import cookie from 'next/dist/compiled/cookie'
 import escapePathDelimiters from '../lib/router/utils/escape-path-delimiters'
@@ -785,6 +786,13 @@ export default class Server {
             server.nextConfig,
             server.distDir
           ),
+      },
+      {
+        match: route('/_next/og-image'),
+        type: 'route',
+        name: '_next/og-image catchall',
+        fn: (req, res, _params, parsedUrl) =>
+          ogImageGenerator(server, req, res, parsedUrl),
       },
       {
         match: route('/_next/:path*'),
