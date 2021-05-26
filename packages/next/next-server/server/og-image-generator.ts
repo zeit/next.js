@@ -1,35 +1,24 @@
 import { IncomingMessage, ServerResponse } from 'http'
-import Stream from 'stream'
-import nodeUrl, { UrlWithParsedQuery } from 'url'
-import Server from './next-server'
+import path from 'path'
+import { UrlWithParsedQuery } from 'url'
 import puppeteer from 'puppeteer-core'
 
 let browser: puppeteer.Browser | undefined
 
-/* eslint-disable-next-line */
+// eslint-disable-next-line
 enum ImageType {
   png = 'png',
   jpeg = 'jpeg',
 }
 
 export async function ogImageGenerator(
-  server: Server,
   req: IncomingMessage,
   res: ServerResponse,
-  parsedUrl: UrlWithParsedQuery,
-  isDev = false
+  pathname: string,
+  query: UrlWithParsedQuery['query'],
+  nonce: string
 ) {
-  const { url, w, h, t } = parsedUrl.query
-
-  if (!url) {
-    res.statusCode = 400
-    res.end('"url" parameter is required')
-    return { finished: true }
-  } else if (Array.isArray(url)) {
-    res.statusCode = 400
-    res.end('"url" parameter cannot be an array')
-    return { finished: true }
-  }
+  const { w, h } = query
 
   if (!w) {
     res.statusCode = 400
@@ -51,16 +40,6 @@ export async function ogImageGenerator(
     return { finished: true }
   }
 
-  if (!t) {
-    res.statusCode = 400
-    res.end('"t" parameter (type) is required')
-    return { finished: true }
-  } else if (Array.isArray(t)) {
-    res.statusCode = 400
-    res.end('"t" parameter (type) cannot be an array')
-    return { finished: true }
-  }
-
   const width = parseInt(w, 10)
   if (!width || isNaN(width)) {
     res.statusCode = 400
@@ -75,79 +54,41 @@ export async function ogImageGenerator(
     return { finished: true }
   }
 
-  let type = t as ImageType
-  if (!Object.values(ImageType).includes(type)) {
+  const type: ImageType = path.extname(pathname).substr(1) as ImageType
+
+  if (!Object.keys(ImageType).includes(type)) {
     res.statusCode = 400
     res.end(
       `"t" parameter (type) must be one of: ${Object.keys(ImageType).join(
-        '\n'
+        ', '
       )}`
     )
     return { finished: true }
   }
 
-  let upstreamStatus: number
-  let upstreamCache: string | null
+  const { localAddress, localPort } = req.connection
+  const _server = (req.connection as any)._server
+  const isHTTPS = _server.secureProtocol
+  const imageUrl = `http${
+    isHTTPS ? 's' : ''
+  }://${localAddress}:${localPort}${pathname.replace(
+    /\.(jpe?g|png)/,
+    ''
+  )}?_nextImageNonce=${nonce}`
 
-  try {
-    const mockRes: any = new Stream.Writable()
+  const absoluteUrl = new URL(imageUrl)
+  const { buffer, upstreamStatus, upstreamCache } = await getScreenshot(
+    absoluteUrl,
+    width,
+    height,
+    type
+  )
 
-    const isStreamFinished = new Promise(function (resolve, reject) {
-      mockRes.on('finish', () => resolve(true))
-      mockRes.on('end', () => resolve(true))
-      mockRes.on('error', () => reject())
-    })
-
-    mockRes.write = (_chunk: Buffer | string) => {
-      // no-op
-    }
-    mockRes._write = (chunk: Buffer | string) => {
-      mockRes.write(chunk)
-    }
-
-    const mockHeaders: Record<string, string | string[]> = {}
-
-    mockRes.writeHead = (_status: any, _headers: any) =>
-      Object.assign(mockHeaders, _headers)
-    mockRes.getHeader = (name: string) => mockHeaders[name.toLowerCase()]
-    mockRes.getHeaders = () => mockHeaders
-    mockRes.getHeaderNames = () => Object.keys(mockHeaders)
-    mockRes.setHeader = (name: string, value: string | string[]) =>
-      (mockHeaders[name.toLowerCase()] = value)
-    mockRes._implicitHeader = () => {}
-    mockRes.finished = false
-    mockRes.statusCode = 200
-
-    const mockReq: any = new Stream.Readable()
-
-    mockReq._read = () => {
-      mockReq.emit('end')
-      mockReq.emit('close')
-      return Buffer.from('')
-    }
-
-    mockReq.headers = req.headers
-    mockReq.method = req.method
-    mockReq.url = url
-
-    await server.getRequestHandler()(mockReq, mockRes, nodeUrl.parse(url, true))
-    await isStreamFinished
-    upstreamStatus = mockRes.statusCode
-    upstreamCache = mockRes.getHeader('Cache-Control')
-  } catch (err) {
-    res.statusCode = 500
-    res.end('"url" parameter is valid but upstream response is invalid')
-    return { finished: true }
-  }
-
-  const proto = isDev ? 'http' : 'https'
-  const host = req.headers.host
-  console.log({ url, prefix: `${proto}://${host}` })
-  const absoluteUrl = new URL(url, `${proto}://${host}`)
-  const buffer = await getScreenshot(isDev, absoluteUrl, width, height, type)
   res.statusCode = upstreamStatus
   res.setHeader('Content-Type', `image/${type}`)
+
   // TODO: should we also set ETag header?
+  // re-use send-payload util?
   if (upstreamCache) {
     res.setHeader('Cache-Control', upstreamCache)
   }
@@ -155,10 +96,7 @@ export async function ogImageGenerator(
   return { finished: true }
 }
 
-function getOptions(isDev: boolean) {
-  if (!isDev) {
-    throw new Error('Production is not implemented yet')
-  }
+function getOptions() {
   return {
     args: [],
     headless: true,
@@ -173,23 +111,34 @@ function getOptions(isDev: boolean) {
 }
 
 async function getScreenshot(
-  isDev: boolean,
   url: URL,
   width: number,
   height: number,
   type: ImageType
-) {
+): Promise<{
+  buffer: Buffer
+  upstreamStatus: number
+  upstreamCache: string
+}> {
   if (!browser) {
-    const options = getOptions(isDev)
+    const options = getOptions()
     browser = await puppeteer.launch(options)
   }
   const page = await browser.newPage()
   await page.setViewport({ width, height })
-  await page.goto(url.href)
+  const response = await page.goto(url.href)
+  const upstreamStatus = response.status()
+  const upstreamCache = response.headers()['cache-control']
   const file = await page.screenshot({ type, encoding: 'binary' })
+
   if (!file || typeof file === 'string') {
     throw new Error('Expected buffer but found ' + typeof file)
   }
   await page.close()
-  return file
+
+  return {
+    buffer: file,
+    upstreamStatus,
+    upstreamCache,
+  }
 }

@@ -277,7 +277,11 @@ export default class DevServer extends Server {
   async prepare(): Promise<void> {
     await verifyTypeScriptSetup(this.dir, this.pagesDir!, false)
 
-    this.customRoutes = await loadCustomRoutes(this.nextConfig)
+    const customRoutes = await loadCustomRoutes(this.nextConfig)
+    this.customRoutes = {
+      ...customRoutes,
+      ogImageNonce: '',
+    }
 
     // reload router
     const { redirects, rewrites, headers } = this.customRoutes
@@ -430,12 +434,13 @@ export default class DevServer extends Server {
   }
 
   // override production loading of routes-manifest
-  protected getCustomRoutes(): CustomRoutes {
+  protected getCustomRoutes(): CustomRoutes & { ogImageNonce: string } {
     // actual routes will be loaded asynchronously during .prepare()
     return {
       redirects: [],
       rewrites: { beforeFiles: [], afterFiles: [], fallback: [] },
       headers: [],
+      ogImageNonce: '',
     }
   }
 
@@ -610,21 +615,31 @@ export default class DevServer extends Server {
 
     // In dev mode we use on demand entries to compile the page before rendering
     try {
-      await this.hotReloader!.ensurePage(pathname).catch(async (err: Error) => {
-        if ((err as any).code !== 'ENOENT') {
-          throw err
-        }
+      // TODO: replace with official image extension list
+      const isOgImage = pathname.match(/\.image\.(jpe?g|png)/)
+      let ensurePathname = pathname
 
-        for (const dynamicRoute of this.dynamicRoutes || []) {
-          const params = dynamicRoute.match(pathname)
-          if (!params) {
-            continue
+      if (isOgImage) {
+        ensurePathname = ensurePathname.replace(/\.(jpe?g|png)$/, '')
+      }
+
+      await this.hotReloader!.ensurePage(ensurePathname).catch(
+        async (err: Error) => {
+          if ((err as any).code !== 'ENOENT') {
+            throw err
           }
 
-          return this.hotReloader!.ensurePage(dynamicRoute.page)
+          for (const dynamicRoute of this.dynamicRoutes || []) {
+            const params = dynamicRoute.match(pathname)
+            if (!params) {
+              continue
+            }
+
+            return this.hotReloader!.ensurePage(dynamicRoute.page)
+          }
+          throw err
         }
-        throw err
-      })
+      )
     } catch (err) {
       if (err.code === 'ENOENT') {
         try {

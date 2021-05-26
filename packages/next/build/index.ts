@@ -389,6 +389,7 @@ export default async function build(
         defaultLocale: string
         localeDetection?: false
       }
+      ogImageNonce: string
     } = nextBuildSpan.traceChild('generate-routes-manifest').traceFn(() => ({
       version: 3,
       pages404: true,
@@ -408,6 +409,8 @@ export default async function build(
         }),
       dataRoutes: [],
       i18n: config.i18n || undefined,
+      // TODO: update to actual randomness
+      ogImageNonce: Math.random() + '',
     }))
 
     if (rewrites.beforeFiles.length === 0 && rewrites.fallback.length === 0) {

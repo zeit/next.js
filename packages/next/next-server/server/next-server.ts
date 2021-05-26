@@ -170,7 +170,8 @@ export default class Server {
   private incrementalCache: IncrementalCache
   protected router: Router
   protected dynamicRoutes?: DynamicRoutes
-  protected customRoutes: CustomRoutes
+  protected customRoutes: CustomRoutes & { ogImageNonce: string }
+  private ogImageNonce: string
 
   public constructor({
     dir = '.',
@@ -254,6 +255,8 @@ export default class Server {
     this.customRoutes = this.getCustomRoutes()
     this.router = new Router(this.generateRoutes())
     this.setAssetPrefix(assetPrefix)
+
+    this.ogImageNonce = this.customRoutes.ogImageNonce
 
     this.incrementalCache = new IncrementalCache({
       dev,
@@ -593,7 +596,7 @@ export default class Server {
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
   }
 
-  protected getCustomRoutes(): CustomRoutes {
+  protected getCustomRoutes(): CustomRoutes & { ogImageNonce: string } {
     const customRoutes = require(join(this.distDir, ROUTES_MANIFEST))
     let rewrites: CustomRoutes['rewrites']
 
@@ -609,6 +612,7 @@ export default class Server {
     } else {
       rewrites = customRoutes.rewrites
     }
+
     return Object.assign(customRoutes, { rewrites })
   }
 
@@ -786,13 +790,6 @@ export default class Server {
             server.nextConfig,
             server.distDir
           ),
-      },
-      {
-        match: route('/_next/og-image'),
-        type: 'route',
-        name: '_next/og-image catchall',
-        fn: (req, res, _params, parsedUrl) =>
-          ogImageGenerator(server, req, res, parsedUrl, this.renderOpts.dev),
       },
       {
         match: route('/_next/:path*'),
@@ -1359,11 +1356,41 @@ export default class Server {
     query: ParsedUrlQuery = {},
     params: Params | null = null
   ): Promise<FindComponentsResult | null> {
+    // {page}.image.{jpg,png,webp} -> {page}.image -> puppeteer-core
+    // dev only: {page}.image.js -> server HTML
+    // {page}.image.{jpg,png,webp} -> query.__nextOgImage
+
+    // we don't allow rendering the HTML without the nonce in
+    // production
+    console.log('looking for pathname', { pathname })
+
+    if (
+      !this.renderOpts.dev &&
+      pathname.endsWith('.image') &&
+      query.__nextImageNonce !== this.ogImageNonce
+    ) {
+      return null
+    }
+
     let paths = [
       // try serving a static AMP version first
       query.amp ? normalizePagePath(pathname) + '.amp' : null,
+
+      // try looking up the statically generated image first or normal pathname
       pathname,
     ].filter(Boolean)
+
+    // TODO: replace with official image extension list
+    const isOgImage = pathname.match(/\.image\.(jpe?g|png)/)
+
+    if (isOgImage) {
+      console.log('set ogImage mode', { pathname })
+      query.__nextOgImage = 'true'
+      // if no statically generated version is available we
+      // check if the pathname is valid and if so we render the
+      // image on-demand
+      paths.push(pathname.replace(/\.(jpe?g|png)$/, ''))
+    }
 
     if (query.__nextLocale) {
       paths = [
@@ -1463,6 +1490,15 @@ export default class Server {
     // we need to ensure the status code if /404 is visited directly
     if (is404Page && !isDataReq) {
       res.statusCode = 404
+    }
+    delete query.__nextImageNonce
+
+    if (query.__nextOgImage) {
+      delete query.__nextOgImage
+      console.log('rendering og image!!')
+
+      await ogImageGenerator(req, res, pathname, query, this.ogImageNonce)
+      return null
     }
 
     // ensure correct status is set when visiting a status page
@@ -2026,6 +2062,9 @@ export default class Server {
   ) {
     let html: string | null
     try {
+      // TODO: move this clearing somewhere better?
+      delete query.__nextOgImage
+
       let result: null | FindComponentsResult = null
 
       const is404 = res.statusCode === 404
