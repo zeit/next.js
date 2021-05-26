@@ -16,7 +16,8 @@ export async function ogImageGenerator(
   server: Server,
   req: IncomingMessage,
   res: ServerResponse,
-  parsedUrl: UrlWithParsedQuery
+  parsedUrl: UrlWithParsedQuery,
+  isDev = false
 ) {
   const { url, w, h, t } = parsedUrl.query
 
@@ -85,12 +86,10 @@ export async function ogImageGenerator(
     return { finished: true }
   }
 
-  let upstreamBuffer: Buffer
-  let upstreamType: string | null
+  let upstreamStatus: number
   let upstreamCache: string | null
 
   try {
-    const resBuffers: Buffer[] = []
     const mockRes: any = new Stream.Writable()
 
     const isStreamFinished = new Promise(function (resolve, reject) {
@@ -99,8 +98,8 @@ export async function ogImageGenerator(
       mockRes.on('error', () => reject())
     })
 
-    mockRes.write = (chunk: Buffer | string) => {
-      resBuffers.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+    mockRes.write = (_chunk: Buffer | string) => {
+      // no-op
     }
     mockRes._write = (chunk: Buffer | string) => {
       mockRes.write(chunk)
@@ -133,10 +132,7 @@ export async function ogImageGenerator(
 
     await server.getRequestHandler()(mockReq, mockRes, nodeUrl.parse(url, true))
     await isStreamFinished
-    res.statusCode = mockRes.statusCode
-
-    upstreamBuffer = Buffer.concat(resBuffers)
-    upstreamType = mockRes.getHeader('Content-Type')
+    upstreamStatus = mockRes.statusCode
     upstreamCache = mockRes.getHeader('Cache-Control')
   } catch (err) {
     res.statusCode = 500
@@ -144,33 +140,19 @@ export async function ogImageGenerator(
     return { finished: true }
   }
 
-  if (upstreamType !== 'text/html') {
-    res.statusCode = 500
-    res.end('"url" parameter is valid but upstream response is not text/html')
-    return { finished: true }
-  }
-
-  const html = upstreamBuffer.toString('utf8')
-  const isDev = process.env.NODE_ENV !== 'production'
-  const buffer = await getScreenshot(isDev, html, width, height, type)
-  sendResponse(req, res, buffer, upstreamCache, upstreamType)
-  return { finished: true }
-}
-
-function sendResponse(
-  _req: IncomingMessage,
-  res: ServerResponse,
-  buffer: Buffer,
-  cacheControl: string | null,
-  contentType: string | null
-) {
-  if (cacheControl) {
-    res.setHeader('Cache-Control', cacheControl)
-  }
-  if (contentType) {
-    res.setHeader('Content-Type', contentType)
+  const proto = isDev ? 'http' : 'https'
+  const host = req.headers.host
+  console.log({ url, prefix: `${proto}://${host}` })
+  const absoluteUrl = new URL(url, `${proto}://${host}`)
+  const buffer = await getScreenshot(isDev, absoluteUrl, width, height, type)
+  res.statusCode = upstreamStatus
+  res.setHeader('Content-Type', `image/${type}`)
+  // TODO: should we also set ETag header?
+  if (upstreamCache) {
+    res.setHeader('Cache-Control', upstreamCache)
   }
   res.end(buffer)
+  return { finished: true }
 }
 
 function getOptions(isDev: boolean) {
@@ -192,7 +174,7 @@ function getOptions(isDev: boolean) {
 
 async function getScreenshot(
   isDev: boolean,
-  html: string,
+  url: URL,
   width: number,
   height: number,
   type: ImageType
@@ -203,10 +185,10 @@ async function getScreenshot(
   }
   const page = await browser.newPage()
   await page.setViewport({ width, height })
-  await page.setContent(html)
+  await page.goto(url.href)
   const file = await page.screenshot({ type, encoding: 'binary' })
   if (!file || typeof file === 'string') {
-    throw new Error('Unexpected file type')
+    throw new Error('Expected buffer but found ' + typeof file)
   }
   await page.close()
   return file

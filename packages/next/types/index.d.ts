@@ -78,6 +78,7 @@ export type PageConfig = {
     externalResolver?: true
   }
   env?: Array<string>
+  unstable_og?: boolean | 'hybrid'
   unstable_runtimeJS?: false
   unstable_JsPreload?: false
 }

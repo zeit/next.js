@@ -792,7 +792,7 @@ export default class Server {
         type: 'route',
         name: '_next/og-image catchall',
         fn: (req, res, _params, parsedUrl) =>
-          ogImageGenerator(server, req, res, parsedUrl),
+          ogImageGenerator(server, req, res, parsedUrl, this.renderOpts.dev),
       },
       {
         match: route('/_next/:path*'),
