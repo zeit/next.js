@@ -1362,8 +1362,6 @@ export default class Server {
 
     // we don't allow rendering the HTML without the nonce in
     // production
-    console.log('looking for pathname', { pathname })
-
     if (
       !this.renderOpts.dev &&
       pathname.endsWith('.image') &&
@@ -1493,6 +1491,9 @@ export default class Server {
     }
     delete query.__nextImageNonce
 
+    // TODO: move this under ssgCache check to honor ogImage revalidating
+    // so that we update build-time generated images correctly and use
+    // them first
     if (query.__nextOgImage) {
       delete query.__nextOgImage
       console.log('rendering og image!!')

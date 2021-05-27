@@ -110,7 +110,7 @@ function getOptions() {
   }
 }
 
-async function getScreenshot(
+export async function getScreenshot(
   url: URL,
   width: number,
   height: number,

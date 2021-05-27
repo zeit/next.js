@@ -1,4 +1,5 @@
 import { loadEnvConfig } from '@next/env'
+import http from 'http'
 import chalk from 'chalk'
 import crypto from 'crypto'
 import { promises, writeFileSync } from 'fs'
@@ -91,6 +92,8 @@ import { PagesManifest } from './webpack/plugins/pages-manifest-plugin'
 import { writeBuildId } from './write-build-id'
 import { normalizeLocalePath } from '../next-server/lib/i18n/normalize-locale-path'
 import { isWebpack5 } from 'next/dist/compiled/webpack/webpack'
+import { getScreenshot } from '../next-server/server/og-image-generator'
+import { serveStatic } from '../next-server/server/serve-static'
 
 const staticCheckWorker = require.resolve('./utils')
 
@@ -1006,6 +1009,64 @@ export default async function build(
     const useDefaultStatic500 = !hasPages500 && !hasNonStaticErrorPage
     const combinedPages = [...staticPages, ...ssgPages]
 
+    const ogImagePages = pageKeys.filter((page) => page.endsWith('.image'))
+
+    const server = http.createServer(async (req, res) => {
+      try {
+        const { pathname } = new URL(req.url!, 'http://n')
+
+        if (pathname.startsWith('/_next/')) {
+          await serveStatic(
+            req,
+            res,
+            path.join(distDir, pathname.replace('_next/', ''))
+          )
+        } else if (pathname.endsWith('.image')) {
+          await serveStatic(
+            req,
+            res,
+            path.join(
+              distDir,
+              isLikeServerless ? SERVERLESS_DIRECTORY : SERVER_DIRECTORY,
+              'pages',
+              pathname + '.html'
+            )
+          )
+        } else {
+          res.statusCode = 404
+          res.end('not found')
+        }
+      } catch (err) {
+        console.error('failed to respond', err)
+        res.statusCode = 500
+        res.end('oops')
+      }
+    })
+
+    await new Promise((resolve) => {
+      server.listen(0, () => resolve(true))
+    })
+
+    for (const page of ogImagePages) {
+      const url = `http://localhost:${(server.address() as any).port}${page}`
+
+      const { buffer } = await getScreenshot(
+        new URL(url),
+        1200,
+        630,
+        'png' as any
+      )
+      const pageImage = `${page}.png`
+
+      await promises.mkdir(path.dirname(page), { recursive: true })
+      await promises.writeFile(
+        path.join(serverOutputDir, 'pages', pageImage),
+        buffer
+      )
+
+      pagesManifest[pageImage] = path.join('pages', pageImage)
+    }
+
     if (combinedPages.length > 0 || useStatic404 || useDefaultStatic500) {
       const staticGenerationSpan = nextBuildSpan.traceChild('static-generation')
       await staticGenerationSpan.traceAsyncFn(async () => {
@@ -1417,6 +1478,12 @@ export default async function build(
         if (postBuildSpinner) postBuildSpinner.stopAndPersist()
         console.log()
       })
+    } else if (ogImagePages.length > 0) {
+      await promises.writeFile(
+        manifestPath,
+        JSON.stringify(pagesManifest, null, 2),
+        'utf8'
+      )
     }
 
     const analysisEnd = process.hrtime(analysisBegin)
