@@ -1498,7 +1498,13 @@ export default class Server {
       delete query.__nextOgImage
       console.log('rendering og image!!')
 
-      await ogImageGenerator(req, res, pathname, query, this.ogImageNonce)
+      await ogImageGenerator(
+        req,
+        res,
+        pathname,
+        this.nextConfig,
+        this.ogImageNonce
+      )
       return null
     }
 

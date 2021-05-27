@@ -1,6 +1,7 @@
 import os from 'os'
 import { Header, Redirect, Rewrite } from '../../lib/load-custom-routes'
 import { imageConfigDefault } from './image-config'
+import { OgImageConfig, ogImageConfigDefault } from './og-image-config'
 
 export type DomainLocales = Array<{
   http?: true
@@ -44,6 +45,7 @@ export type NextConfig = { [key: string]: any } & {
     reactMode?: 'legacy' | 'concurrent' | 'blocking'
     workerThreads?: boolean
     pageEnv?: boolean
+    ogImage?: OgImageConfig
     optimizeImages?: boolean
     optimizeCss?: boolean
     scrollRestoration?: boolean
@@ -109,6 +111,7 @@ export const defaultConfig: NextConfig = {
     sprFlushToDisk: true,
     workerThreads: false,
     pageEnv: false,
+    ogImage: ogImageConfigDefault,
     optimizeImages: false,
     optimizeCss: false,
     scrollRestoration: false,

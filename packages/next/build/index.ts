@@ -94,6 +94,7 @@ import { normalizeLocalePath } from '../next-server/lib/i18n/normalize-locale-pa
 import { isWebpack5 } from 'next/dist/compiled/webpack/webpack'
 import { getScreenshot } from '../next-server/server/og-image-generator'
 import { serveStatic } from '../next-server/server/serve-static'
+import { ogImageConfigDefault } from '../next-server/server/og-image-config'
 
 const staticCheckWorker = require.resolve('./utils')
 
@@ -233,6 +234,10 @@ export default async function build(
     })
 
     const isLikeServerless = isTargetLikeServerless(target)
+    const serverOutputDir = path.join(
+      distDir,
+      isLikeServerless ? SERVERLESS_DIRECTORY : SERVER_DIRECTORY
+    )
 
     const pagePaths: string[] = await nextBuildSpan
       .traceChild('collect-pages')
@@ -1050,15 +1055,14 @@ export default async function build(
     for (const page of ogImagePages) {
       const url = `http://localhost:${(server.address() as any).port}${page}`
 
-      const { buffer } = await getScreenshot(
-        new URL(url),
-        1200,
-        630,
-        'png' as any
-      )
-      const pageImage = `${page}.png`
+      const ogImageConfig = config.experimental.ogImage || ogImageConfigDefault
+
+      const ext = 'png' as const
+      const { buffer } = await getScreenshot(new URL(url), ogImageConfig)
+      const pageImage = `${page}.${ext}`
 
       await promises.mkdir(path.dirname(page), { recursive: true })
+
       await promises.writeFile(
         path.join(serverOutputDir, 'pages', pageImage),
         buffer
@@ -1197,10 +1201,6 @@ export default async function build(
           const serverBundle = getPagePath(page, distDir, isLikeServerless)
           await promises.unlink(serverBundle)
         }
-        const serverOutputDir = path.join(
-          distDir,
-          isLikeServerless ? SERVERLESS_DIRECTORY : SERVER_DIRECTORY
-        )
 
         const moveExportedPage = async (
           originPage: string,

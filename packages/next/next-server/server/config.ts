@@ -9,6 +9,7 @@ import { defaultConfig, normalizeConfig } from './config-shared'
 import { loadWebpackHook } from './config-utils'
 import { ImageConfig, imageConfigDefault, VALID_LOADERS } from './image-config'
 import { loadEnvConfig } from '@next/env'
+import { OgImageConfig } from './og-image-config'
 
 export { DomainLocales, NextConfig, normalizeConfig } from './config-shared'
 
@@ -286,6 +287,36 @@ function assignDefaults(userConfig: { [key: string]: any }) {
 
     if (images.path === imageConfigDefault.path && result.basePath) {
       images.path = `${result.basePath}${images.path}`
+    }
+  }
+
+  if (result.experimental.ogImage) {
+    const ogImage: Partial<OgImageConfig> = result.experimental.ogImage
+
+    if (typeof ogImage !== 'object') {
+      throw new Error(
+        `Specified ogImage should be an object received ${typeof ogImage}.`
+      )
+    }
+    if (typeof ogImage.width !== 'number') {
+      throw new Error(
+        `Specified ogImage.width should be a number received ${typeof ogImage.width}.`
+      )
+    }
+    if (typeof ogImage.height !== 'number') {
+      throw new Error(
+        `Specified ogImage.height should be a number received ${typeof ogImage.height}.`
+      )
+    }
+    if (ogImage.type !== 'png' && ogImage.type !== 'jpeg') {
+      throw new Error(
+        `Specified ogImage.type should be either png or jpeg received ${ogImage.type}.`
+      )
+    }
+    if (typeof ogImage.browserExePath !== 'string') {
+      throw new Error(
+        `Specified ogImage.browserExePath should be a string received ${typeof ogImage.browserExePath}.`
+      )
     }
   }
 
