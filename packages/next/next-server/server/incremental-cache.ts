@@ -1,7 +1,8 @@
-import { promises, readFileSync } from 'fs'
+import { createReadStream, promises, readFileSync } from 'fs'
 import LRUCache from 'next/dist/compiled/lru-cache'
 import path from 'path'
 import { PrerenderManifest } from '../../build'
+import { fileExists } from '../../lib/file-exists'
 import { PRERENDER_MANIFEST } from '../lib/constants'
 import { normalizePagePath } from './normalize-page-path'
 
@@ -82,7 +83,10 @@ export class IncrementalCache {
   }
 
   private getSeedPath(pathname: string, ext: string): string {
-    return path.join(this.incrementalOptions.pagesDir!, `${pathname}.${ext}`)
+    return path.join(
+      this.incrementalOptions.pagesDir!,
+      `${pathname}${ext ? `.${ext}` : ''}`
+    )
   }
 
   private calculateRevalidate(pathname: string): number | false {
@@ -125,20 +129,33 @@ export class IncrementalCache {
       }
 
       try {
-        const html = await promises.readFile(
-          this.getSeedPath(pathname, 'html'),
-          'utf8'
-        )
-        const pageData = JSON.parse(
-          await promises.readFile(this.getSeedPath(pathname, 'json'), 'utf8')
-        )
+        if (pathname.match(/\.image\.(jpe?g|png)/)) {
+          const outputPath = this.getSeedPath(pathname, '')
 
-        data = {
-          html,
-          pageData,
-          revalidateAfter: this.calculateRevalidate(pathname),
+          if (await fileExists(outputPath, 'file')) {
+            data = {
+              image: createReadStream(outputPath),
+              revalidateAfter: this.calculateRevalidate(
+                pathname.replace(/\.(jpe\?g|png)/, '')
+              ),
+            } as any
+          }
+        } else {
+          const html = await promises.readFile(
+            this.getSeedPath(pathname, 'html'),
+            'utf8'
+          )
+          const pageData = JSON.parse(
+            await promises.readFile(this.getSeedPath(pathname, 'json'), 'utf8')
+          )
+
+          data = {
+            html,
+            pageData,
+            revalidateAfter: this.calculateRevalidate(pathname),
+          }
+          this.cache.set(pathname, data)
         }
-        this.cache.set(pathname, data)
       } catch (_) {
         // unable to get data from disk
       }
@@ -165,6 +182,7 @@ export class IncrementalCache {
   async set(
     pathname: string,
     data: {
+      imageData?: Buffer
       html?: string
       pageData?: any
       isNotFound?: boolean
@@ -185,25 +203,34 @@ export class IncrementalCache {
         initialRevalidateSeconds: revalidateSeconds,
       }
     }
+    const isOgImage = pathname.match(/\.image\.(jpe?g|png)/)
 
     pathname = normalizePagePath(pathname)
-    this.cache.set(pathname, {
-      ...data,
-      revalidateAfter: this.calculateRevalidate(pathname),
-    })
+
+    if (!isOgImage) {
+      this.cache.set(pathname, {
+        ...data,
+        revalidateAfter: this.calculateRevalidate(pathname),
+      })
+    }
 
     // TODO: This option needs to cease to exist unless it stops mutating the
     // `next build` output's manifest.
     if (this.incrementalOptions.flushToDisk && !data.isNotFound) {
       try {
-        const seedPath = this.getSeedPath(pathname, 'html')
+        const seedPath = this.getSeedPath(pathname, isOgImage ? '' : 'html')
         await promises.mkdir(path.dirname(seedPath), { recursive: true })
-        await promises.writeFile(seedPath, data.html, 'utf8')
-        await promises.writeFile(
-          this.getSeedPath(pathname, 'json'),
-          JSON.stringify(data.pageData),
-          'utf8'
-        )
+
+        if (isOgImage) {
+          await promises.writeFile(seedPath, data.imageData)
+        } else {
+          await promises.writeFile(seedPath, data.html, 'utf8')
+          await promises.writeFile(
+            this.getSeedPath(pathname, 'json'),
+            JSON.stringify(data.pageData),
+            'utf8'
+          )
+        }
       } catch (error) {
         // failed to flush to disk
         console.warn('Failed to update prerender files for', pathname, error)

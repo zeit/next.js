@@ -1,4 +1,4 @@
-import { IncomingMessage, ServerResponse } from 'http'
+import { IncomingMessage } from 'http'
 import puppeteer from 'puppeteer-core'
 import { NextConfig } from '../../next-server/server/config-shared'
 import { OgImageConfig, ogImageConfigDefault } from './og-image-config'
@@ -7,7 +7,6 @@ let browser: puppeteer.Browser | undefined
 
 export async function ogImageGenerator(
   req: IncomingMessage,
-  res: ServerResponse,
   pathname: string,
   nextConfig: NextConfig,
   nonce: string
@@ -19,9 +18,7 @@ export async function ogImageGenerator(
   const type = config.type
 
   if (extension !== type) {
-    res.statusCode = 400
-    res.end(`expected extension to end with ${type}`)
-    return { finished: true }
+    throw new Error(`expected extension to end with ${type}`)
   }
 
   const { localAddress, localPort } = req.connection
@@ -31,24 +28,10 @@ export async function ogImageGenerator(
   const absoluteUrl = new URL(
     `${proto}://${localAddress}:${localPort}${upstreamPathname}`
   )
-  absoluteUrl.searchParams.set('_nextImageNonce', nonce)
   // TODO: set upstream query string params too?
+  absoluteUrl.searchParams.set('__nextImageNonce', nonce)
 
-  const { buffer, upstreamStatus, upstreamCache } = await getScreenshot(
-    absoluteUrl,
-    config
-  )
-
-  res.statusCode = upstreamStatus
-  res.setHeader('Content-Type', `image/${type}`)
-
-  // TODO: should we also set ETag header?
-  // re-use send-payload util?
-  if (upstreamCache) {
-    res.setHeader('Cache-Control', upstreamCache)
-  }
-  res.end(buffer)
-  return { finished: true }
+  return getScreenshot(absoluteUrl, config)
 }
 
 export async function getScreenshot(
@@ -56,6 +39,7 @@ export async function getScreenshot(
   { width, height, type, browserExePath }: OgImageConfig
 ): Promise<{
   buffer: Buffer
+  contentType: string
   upstreamStatus: number
   upstreamCache: string
 }> {
@@ -78,9 +62,12 @@ export async function getScreenshot(
   }
   await page.close()
 
+  // TODO: should we also set ETag header?
+  // re-use send-payload util?
   return {
     buffer: file,
     upstreamStatus,
     upstreamCache,
+    contentType: `image/${type}`,
   }
 }

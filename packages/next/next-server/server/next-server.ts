@@ -1356,15 +1356,14 @@ export default class Server {
     query: ParsedUrlQuery = {},
     params: Params | null = null
   ): Promise<FindComponentsResult | null> {
-    // {page}.image.{jpg,png,webp} -> {page}.image -> puppeteer-core
-    // dev only: {page}.image.js -> server HTML
-    // {page}.image.{jpg,png,webp} -> query.__nextOgImage
-
     // we don't allow rendering the HTML without the nonce in
     // production
     if (
-      !this.renderOpts.dev &&
       pathname.endsWith('.image') &&
+      // we allow the HTML to viewed in development for debugging
+      !this.renderOpts.dev &&
+      // we need to look-up dynamic routes still
+      !isDynamicRoute(pathname) &&
       query.__nextImageNonce !== this.ogImageNonce
     ) {
       return null
@@ -1382,7 +1381,6 @@ export default class Server {
     const isOgImage = pathname.match(/\.image\.(jpe?g|png)/)
 
     if (isOgImage) {
-      console.log('set ogImage mode', { pathname })
       query.__nextOgImage = 'true'
       // if no statically generated version is available we
       // check if the pathname is valid and if so we render the
@@ -1489,34 +1487,37 @@ export default class Server {
     if (is404Page && !isDataReq) {
       res.statusCode = 404
     }
+    const isOgImageRequest = !!query.__nextOgImage
+    delete query.__nextOgImage
     delete query.__nextImageNonce
 
-    // TODO: move this under ssgCache check to honor ogImage revalidating
-    // so that we update build-time generated images correctly and use
-    // them first
-    if (query.__nextOgImage) {
-      delete query.__nextOgImage
-      console.log('rendering og image!!')
-
-      await ogImageGenerator(
-        req,
-        res,
-        pathname,
-        this.nextConfig,
-        this.ogImageNonce
-      )
+    if (isOgImageRequest && 'pipe' in components.Component) {
+      ;(components.Component as any).pipe(res)
       return null
+    }
+
+    if (
+      !is404Page &&
+      req.url!.endsWith('.image') &&
+      query.__nextImageNonce !== this.ogImageNonce &&
+      !this.renderOpts.dev
+    ) {
+      await this.render404(req, res, {
+        pathname,
+        query,
+      } as UrlWithParsedQuery)
+      return null
+    }
+
+    // handle static page
+    if (typeof components.Component === 'string') {
+      return components.Component
     }
 
     // ensure correct status is set when visiting a status page
     // directly e.g. /500
     if (STATIC_STATUS_PAGES.includes(pathname)) {
       res.statusCode = parseInt(pathname.substr(1), 10)
-    }
-
-    // handle static page
-    if (typeof components.Component === 'string') {
-      return components.Component
     }
 
     if (!query.amp) {
@@ -1649,6 +1650,9 @@ export default class Server {
       ? await this.incrementalCache.get(ssgCacheKey)
       : undefined
 
+    // TODO: ensure revalidate is honored with incremental cache and
+    // OG images
+
     if (cachedData) {
       const data = isDataReq
         ? JSON.stringify(cachedData.pageData)
@@ -1680,6 +1684,9 @@ export default class Server {
             query,
           } as UrlWithParsedQuery)
         }
+      } else if ((cachedData as any).image) {
+        // TODO: set revalidate headers
+        ;(cachedData as any).image.pipe(res)
       } else {
         sendPayload(
           req,
@@ -1710,6 +1717,7 @@ export default class Server {
 
     const doRender = maybeCoalesceInvoke(
       async (): Promise<{
+        imageData?: Buffer
         html: string | null
         pageData: any
         sprRevalidate: number | false
@@ -1721,6 +1729,33 @@ export default class Server {
         let sprRevalidate: number | false
         let isNotFound: boolean | undefined
         let isRedirect: boolean | undefined
+
+        if (isOgImageRequest) {
+          const {
+            buffer,
+            upstreamStatus,
+            upstreamCache,
+            contentType,
+          } = await ogImageGenerator(
+            req,
+            ssgCacheKey || parseUrl(req.url!).pathname!,
+            this.nextConfig,
+            this.ogImageNonce
+          )
+
+          res.statusCode = upstreamStatus
+          res.setHeader('Content-Type', contentType)
+          res.setHeader('Cache-Control', upstreamCache)
+          res.end(buffer)
+
+          return {
+            imageData: buffer,
+            html: null,
+            pageData: null,
+            // TODO: get correct revalidate from image generator
+            sprRevalidate: 1,
+          }
+        }
 
         let renderResult
         // handle serverless
@@ -1877,7 +1912,14 @@ export default class Server {
 
     const {
       isOrigin,
-      value: { html, pageData, sprRevalidate, isNotFound, isRedirect },
+      value: {
+        imageData,
+        html,
+        pageData,
+        sprRevalidate,
+        isNotFound,
+        isRedirect,
+      },
     } = await doRender()
     let resHtml = html
 
@@ -1917,7 +1959,7 @@ export default class Server {
     if (isOrigin && ssgCacheKey) {
       await this.incrementalCache.set(
         ssgCacheKey,
-        { html: html!, pageData, isNotFound, isRedirect },
+        { imageData, html: html!, pageData, isNotFound, isRedirect },
         sprRevalidate
       )
     }
@@ -1970,7 +2012,13 @@ export default class Server {
 
       if (this.dynamicRoutes) {
         for (const dynamicRoute of this.dynamicRoutes) {
-          const params = dynamicRoute.match(pathname)
+          const isOgImage = pathname.match(/\.image\.(jpe?g|png)/)
+          const dynamicPathname = isOgImage
+            ? pathname.replace(/\.(jpe?g|png)/, '')
+            : pathname
+
+          const params = dynamicRoute.match(dynamicPathname)
+
           if (!params) {
             continue
           }
@@ -1980,7 +2028,11 @@ export default class Server {
             query,
             params
           )
+
           if (dynamicRouteResult) {
+            if (isOgImage) {
+              dynamicRouteResult.query.__nextOgImage = 'true'
+            }
             try {
               return await this.renderToHTMLWithComponents(
                 req,

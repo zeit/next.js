@@ -93,7 +93,6 @@ import { writeBuildId } from './write-build-id'
 import { normalizeLocalePath } from '../next-server/lib/i18n/normalize-locale-path'
 import { isWebpack5 } from 'next/dist/compiled/webpack/webpack'
 import { getScreenshot } from '../next-server/server/og-image-generator'
-import { serveStatic } from '../next-server/server/serve-static'
 import { ogImageConfigDefault } from '../next-server/server/og-image-config'
 
 const staticCheckWorker = require.resolve('./utils')
@@ -253,6 +252,7 @@ export default async function build(
       previewModeSigningKey: crypto.randomBytes(32).toString('hex'),
       previewModeEncryptionKey: crypto.randomBytes(32).toString('hex'),
     }
+    const ogImageNonce = crypto.randomBytes(32).toString('hex')
 
     const mappedPages = nextBuildSpan
       .traceChild('create-pages-mapping')
@@ -417,7 +417,7 @@ export default async function build(
         }),
       dataRoutes: [],
       i18n: config.i18n || undefined,
-      ogImageNonce: crypto.randomBytes(32).toString('hex'),
+      ogImageNonce,
     }))
 
     if (rewrites.beforeFiles.length === 0 && rewrites.fallback.length === 0) {
@@ -807,6 +807,8 @@ export default async function build(
                   if (workerResult.prerenderFallback === 'blocking') {
                     ssgBlockingFallbackPages.add(page)
                   } else if (workerResult.prerenderFallback === true) {
+                    // TODO: throw error if fallback: true is used with
+                    // .image.js page
                     ssgStaticFallbackPages.add(page)
                   }
                 } else if (workerResult.hasServerProps) {
@@ -1012,63 +1014,6 @@ export default async function build(
     const hasPages500 = usedStaticStatusPages.includes('/500')
     const useDefaultStatic500 = !hasPages500 && !hasNonStaticErrorPage
     const combinedPages = [...staticPages, ...ssgPages]
-
-    const ogImagePages = pageKeys.filter((page) => page.endsWith('.image'))
-
-    const server = http.createServer(async (req, res) => {
-      try {
-        const { pathname } = new URL(req.url!, 'http://n')
-
-        if (pathname.startsWith('/_next/')) {
-          await serveStatic(
-            req,
-            res,
-            path.join(distDir, pathname.replace('_next/', ''))
-          )
-        } else if (pathname.endsWith('.image')) {
-          await serveStatic(
-            req,
-            res,
-            path.join(
-              distDir,
-              isLikeServerless ? SERVERLESS_DIRECTORY : SERVER_DIRECTORY,
-              'pages',
-              pathname + '.html'
-            )
-          )
-        } else {
-          res.statusCode = 404
-          res.end('not found')
-        }
-      } catch (err) {
-        console.error('failed to respond', err)
-        res.statusCode = 500
-        res.end('oops')
-      }
-    })
-
-    await new Promise((resolve) => {
-      server.listen(0, () => resolve(true))
-    })
-
-    for (const page of ogImagePages) {
-      const url = `http://localhost:${(server.address() as any).port}${page}`
-
-      const ogImageConfig = config.experimental.ogImage || ogImageConfigDefault
-
-      const ext = 'png' as const
-      const { buffer } = await getScreenshot(new URL(url), ogImageConfig)
-      const pageImage = `${page}.${ext}`
-
-      await promises.mkdir(path.dirname(page), { recursive: true })
-
-      await promises.writeFile(
-        path.join(serverOutputDir, 'pages', pageImage),
-        buffer
-      )
-
-      pagesManifest[pageImage] = path.join('pages', pageImage)
-    }
 
     if (combinedPages.length > 0 || useStatic404 || useDefaultStatic500) {
       const staticGenerationSpan = nextBuildSpan.traceChild('static-generation')
@@ -1477,12 +1422,6 @@ export default async function build(
         if (postBuildSpinner) postBuildSpinner.stopAndPersist()
         console.log()
       })
-    } else if (ogImagePages.length > 0) {
-      await promises.writeFile(
-        manifestPath,
-        JSON.stringify(pagesManifest, null, 2),
-        'utf8'
-      )
     }
 
     const analysisEnd = process.hrtime(analysisBegin)
@@ -1594,6 +1533,96 @@ export default async function build(
       }
       return Promise.reject(err)
     })
+
+    const ogImagePaths = [
+      ...staticPages,
+      ...ssgPages,
+      ...Array.from(additionalSsgPaths.values()).flat(),
+    ].filter((page) => page.endsWith('.image'))
+
+    if (ogImagePaths.length > 0) {
+      delete require.cache[
+        require.resolve(path.join(serverOutputDir, PAGES_MANIFEST))
+      ]
+      const NextServer = require('../next-server/server/next-server').default
+      const nextServer = new NextServer({
+        isCustomServer: false,
+        dir,
+        conf: config,
+      })
+      const requestHandler = nextServer.getRequestHandler()
+
+      const server = http.createServer(async (req, res) => {
+        try {
+          await requestHandler(req, res)
+
+          if (res.statusCode === 500) {
+            console.error(
+              `Error failed to handle og-image prerender: ${req.url}`
+            )
+            process.exit(1)
+          }
+        } catch (err) {
+          console.error(
+            `Error failed to handle og-image prerender: ${req.url}`,
+            err
+          )
+          process.exit(1)
+        }
+      })
+
+      await new Promise((resolve) => {
+        server.listen(0, () => resolve(true))
+      })
+
+      console.log({ ogImagePaths })
+
+      for (const ogPath of ogImagePaths) {
+        const isSsg = ssgPages.has(ogPath)
+
+        if (isSsg && isDynamicRoute(ogPath)) {
+          // we don't generate og-images for SSG dynamic routes themselves
+          // e.g. /blog/[slug].image
+          continue
+        }
+
+        const url = `http://localhost:${
+          (server.address() as any).port
+        }${ogPath}`
+        const urlObj = new URL(url)
+
+        urlObj.searchParams.set('__nextImageNonce', ogImageNonce)
+
+        const ogImageConfig =
+          config.experimental.ogImage || ogImageConfigDefault
+
+        const ext = 'png' as const
+
+        console.log('url', urlObj.toString())
+        const { buffer } = await getScreenshot(urlObj, ogImageConfig)
+        const pageImage = `${ogPath}.${ext}`
+
+        await promises.mkdir(
+          path.dirname(path.join(serverOutputDir, 'pages', ogPath)),
+          { recursive: true }
+        )
+
+        await promises.writeFile(
+          path.join(serverOutputDir, 'pages', pageImage),
+          buffer
+        )
+
+        if (!isSsg) {
+          pagesManifest[pageImage] = path.join('pages', pageImage)
+        }
+      }
+
+      await promises.writeFile(
+        manifestPath,
+        JSON.stringify(pagesManifest, null, 2),
+        'utf8'
+      )
+    }
 
     staticPages.forEach((pg) => allStaticPages.add(pg))
     pageInfos.forEach((info: PageInfo, key: string) => {

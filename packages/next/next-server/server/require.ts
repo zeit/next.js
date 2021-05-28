@@ -1,4 +1,4 @@
-import { promises } from 'fs'
+import { createReadStream, promises } from 'fs'
 import { join } from 'path'
 import {
   PAGES_MANIFEST,
@@ -64,6 +64,8 @@ export function requirePage(
   const pagePath = getPagePath(page, distDir, serverless)
   if (pagePath.endsWith('.html')) {
     return promises.readFile(pagePath, 'utf8')
+  } else if (pagePath.match(/\.image\.(jpe?g|png)/)) {
+    return createReadStream(pagePath)
   }
   return require(pagePath)
 }

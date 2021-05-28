@@ -34,14 +34,31 @@ export function getRouteRegex(
     .slice(1)
     .split('/')
 
+  const isImageRoute = normalizedRoute.endsWith('.image')
+
   const groups: { [groupName: string]: Group } = {}
   let groupIndex = 1
   const parameterizedRoute = segments
-    .map((segment) => {
-      if (segment.startsWith('[') && segment.endsWith(']')) {
-        const { key, optional, repeat } = parseParameter(segment.slice(1, -1))
+    .map((segment, idx) => {
+      const isImageSegment =
+        isImageRoute &&
+        idx === segments.length - 1 &&
+        segment.endsWith('].image')
+
+      if (
+        segment.startsWith('[') &&
+        (isImageSegment || segment.endsWith(']'))
+      ) {
+        const { key, optional, repeat } = parseParameter(
+          isImageSegment ? segment.slice(1, -7) : segment.slice(1, -1)
+        )
         groups[key] = { pos: groupIndex++, repeat, optional }
-        return repeat ? (optional ? '(?:/(.+?))?' : '/(.+?)') : '/([^/]+?)'
+        const imageMatch = isImageSegment ? '(?:\\.image)' : ''
+        return repeat
+          ? optional
+            ? `(?:/(.+?))?${imageMatch}`
+            : `/(.+?)${imageMatch}`
+          : `/([^/]+?)${imageMatch}`
       } else {
         return `/${escapeRegex(segment)}`
       }

@@ -630,7 +630,7 @@ export default class DevServer extends Server {
           }
 
           for (const dynamicRoute of this.dynamicRoutes || []) {
-            const params = dynamicRoute.match(pathname)
+            const params = dynamicRoute.match(ensurePathname)
             if (!params) {
               continue
             }
