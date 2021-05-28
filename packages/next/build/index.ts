@@ -417,8 +417,7 @@ export default async function build(
         }),
       dataRoutes: [],
       i18n: config.i18n || undefined,
-      // TODO: update to actual randomness
-      ogImageNonce: Math.random() + '',
+      ogImageNonce: crypto.randomBytes(32).toString('hex'),
     }))
 
     if (rewrites.beforeFiles.length === 0 && rewrites.fallback.length === 0) {
