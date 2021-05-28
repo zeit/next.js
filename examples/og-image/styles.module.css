@@ -1,0 +1,11 @@
+.hello {
+  font: 15px Helvetica, Arial, sans-serif;
+  font-size: 5rem;
+  color: hotpink;
+  text-shadow: #fabff2 1px 1px, #fccff6 2px 2px, #fcedfa 3px 3px,
+    #fcf6fb 4px 4px, #ffffff 5px 5px;
+  background: rgb(29, 146, 241);
+  padding-top: 2rem;
+  text-align: center;
+  height: 80vh;
+}
