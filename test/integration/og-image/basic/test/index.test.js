@@ -36,10 +36,8 @@ function runTests({ isDev, width = 1200, height = 630, type = 'png' }) {
     const res = await fetchViaHTTP(appPort, '/basic', null, {})
 
     expect(res.status).toBe(200)
-    expect(res.headers.get('content-type')).toContain('image/html')
-    expect(res.headers.get('cache-control')).toBe(
-      'public, max-age=0, must-revalidate'
-    )
+    expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8')
+    expect(res.headers.get('cache-control')).toBe('no-store, must-revalidate')
     //expect(res.headers.get('etag')).toBeTruthy()
     const text = await res.text()
     expect(text).toMatch(/Basic Page/m)
@@ -50,10 +48,8 @@ function runTests({ isDev, width = 1200, height = 630, type = 'png' }) {
   it('should return basic image binary', async () => {
     const res = await fetchViaHTTP(appPort, `/basic.image.${type}`, null, {})
     expect(res.status).toBe(200)
-    expect(res.headers.get('content-type')).toContain(`image/${type}`)
-    expect(res.headers.get('cache-control')).toBe(
-      'public, max-age=0, must-revalidate'
-    )
+    expect(res.headers.get('content-type')).toBe(`image/${type}`)
+    expect(res.headers.get('cache-control')).toBe('no-store, must-revalidate')
     //expect(res.headers.get('etag')).toBeTruthy()
     expectImage(res, width, height)
   })
@@ -62,10 +58,8 @@ function runTests({ isDev, width = 1200, height = 630, type = 'png' }) {
     it('should return basic image as html in development', async () => {
       const res = await fetchViaHTTP(appPort, '/basic.image', null, {})
       expect(res.status).toBe(200)
-      expect(res.headers.get('content-type')).toContain('image/html')
-      expect(res.headers.get('cache-control')).toBe(
-        'public, max-age=0, must-revalidate'
-      )
+      expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8')
+      expect(res.headers.get('cache-control')).toBe('no-store, must-revalidate')
       //expect(res.headers.get('etag')).toBeTruthy()
     })
   } else {
