@@ -155,7 +155,7 @@ describe('OG Image Basic Usage', () => {
       await nextConfig.restore()
 
       expect(stderr).toContain(
-        'Specified ogImage.type should be a string received number'
+        'Specified ogImage.type should be either png or jpeg received 123'
       )
     })
     it('should error when browserExePath contains invalid value', async () => {

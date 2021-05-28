@@ -9,7 +9,7 @@ import { defaultConfig, normalizeConfig } from './config-shared'
 import { loadWebpackHook } from './config-utils'
 import { ImageConfig, imageConfigDefault, VALID_LOADERS } from './image-config'
 import { loadEnvConfig } from '@next/env'
-import { OgImageConfig } from './og-image-config'
+import { OgImageConfig, ogImageConfigDefault } from './og-image-config'
 
 export { DomainLocales, NextConfig, normalizeConfig } from './config-shared'
 
@@ -293,31 +293,32 @@ function assignDefaults(userConfig: { [key: string]: any }) {
   if (result.experimental.ogImage) {
     const ogImage: Partial<OgImageConfig> = result.experimental.ogImage
 
-    if (typeof ogImage !== 'object') {
+    if (ogImage && typeof ogImage !== 'object') {
       throw new Error(
         `Specified ogImage should be an object received ${typeof ogImage}.`
       )
     }
-    if (typeof ogImage.width !== 'number') {
+    if (ogImage.width && typeof ogImage.width !== 'number') {
       throw new Error(
         `Specified ogImage.width should be a number received ${typeof ogImage.width}.`
       )
     }
-    if (typeof ogImage.height !== 'number') {
+    if (ogImage.height && typeof ogImage.height !== 'number') {
       throw new Error(
         `Specified ogImage.height should be a number received ${typeof ogImage.height}.`
       )
     }
-    if (ogImage.type !== 'png' && ogImage.type !== 'jpeg') {
+    if (ogImage.type && ogImage.type !== 'png' && ogImage.type !== 'jpeg') {
       throw new Error(
         `Specified ogImage.type should be either png or jpeg received ${ogImage.type}.`
       )
     }
-    if (typeof ogImage.browserExePath !== 'string') {
+    if (ogImage.browserExePath && typeof ogImage.browserExePath !== 'string') {
       throw new Error(
         `Specified ogImage.browserExePath should be a string received ${typeof ogImage.browserExePath}.`
       )
     }
+    result.experimental.ogImage = { ...ogImageConfigDefault, ...ogImage }
   }
 
   if (result.i18n) {
