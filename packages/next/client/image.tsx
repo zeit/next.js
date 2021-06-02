@@ -546,6 +546,7 @@ export default function Image({
     </div>
   )
 }
+export { Image }
 
 //BUILT IN LOADERS
 
