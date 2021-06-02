@@ -1596,9 +1596,9 @@ export default async function build(
         const ogImageConfig =
           config.experimental.ogImage || ogImageConfigDefault
 
-        const ext = 'png' as const
+        const ext = config.experimental.ogImage?.type
 
-        console.log('url', urlObj.toString())
+        console.log({ url: urlObj, ext })
         const { buffer } = await getScreenshot(urlObj, ogImageConfig)
         const pageImage = `${ogPath}.${ext}`
 

@@ -1,4 +1,4 @@
-import { createReadStream, promises } from 'fs'
+import { promises } from 'fs'
 import { join } from 'path'
 import {
   PAGES_MANIFEST,
@@ -65,7 +65,8 @@ export function requirePage(
   if (pagePath.endsWith('.html')) {
     return promises.readFile(pagePath, 'utf8')
   } else if (pagePath.match(/\.image\.(jpe?g|png)/)) {
-    return createReadStream(pagePath)
+    console.log('requirePage', { pagePath })
+    return { isOgImage: true, pagePath, type: pagePath.split('.').pop() }
   }
   return require(pagePath)
 }

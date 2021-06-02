@@ -1491,8 +1491,12 @@ export default class Server {
     delete query.__nextOgImage
     delete query.__nextImageNonce
 
-    if (isOgImageRequest && 'pipe' in components.Component) {
-      ;(components.Component as any).pipe(res)
+    if (isOgImageRequest && 'isOgImage' in components.Component) {
+      const foo = components.Component as any
+      const { type, pagePath } = foo
+      res.setHeader('Content-Type', `image/${type}`)
+      res.setHeader('Cache-Control', 'no-store, must-revalidate')
+      fs.createReadStream(pagePath).pipe(res)
       return null
     }
 
