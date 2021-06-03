@@ -34,16 +34,18 @@ function runTests({ isDev, width = 1200, height = 630, type = 'png' }) {
 
   it('should return basic page', async () => {
     const res = await fetchViaHTTP(appPort, '/basic', null, {})
-
     expect(res.status).toBe(200)
     expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8')
-    if (!isDev) {
+    if (isDev) {
       expect(res.headers.get('cache-control')).toBe('no-store, must-revalidate')
-      //expect(res.headers.get('etag')).toBeTruthy()
+      expect(res.headers.get('etag')).toBeTruthy()
+    } else {
+      expect(res.headers.get('cache-control')).toBeFalsy()
+      expect(res.headers.get('etag')).toBeTruthy()
     }
     const text = await res.text()
     expect(text).toMatch(/Basic Page/m)
-    expect(text).toMatch('/basic.image.png')
+    expect(text).toMatch(`/basic.image.${type}`)
     //expect(text).toMatch('<meta og:image />')
   })
 
@@ -51,9 +53,12 @@ function runTests({ isDev, width = 1200, height = 630, type = 'png' }) {
     const res = await fetchViaHTTP(appPort, `/basic.image.${type}`, null, {})
     expect(res.status).toBe(200)
     expect(res.headers.get('content-type')).toBe(`image/${type}`)
-    if (!isDev) {
+    if (isDev) {
       expect(res.headers.get('cache-control')).toBe('no-store, must-revalidate')
-      //expect(res.headers.get('etag')).toBeTruthy()
+      expect(res.headers.get('etag')).toBeTruthy()
+    } else {
+      expect(res.headers.get('cache-control')).toBeFalsy()
+      expect(res.headers.get('etag')).toBeTruthy()
     }
     expectImage(res, width, height)
   })
@@ -63,22 +68,38 @@ function runTests({ isDev, width = 1200, height = 630, type = 'png' }) {
       const res = await fetchViaHTTP(appPort, '/basic.image', null, {})
       expect(res.status).toBe(200)
       expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8')
-      if (!isDev) {
-        expect(res.headers.get('cache-control')).toBe(
-          'no-store, must-revalidate'
-        )
-        //expect(res.headers.get('etag')).toBeTruthy()
-      }
+      expect(res.headers.get('cache-control')).toBe('no-store, must-revalidate')
     })
   } else {
     it('should not return basic image as html in production', async () => {
       const res = await fetchViaHTTP(appPort, '/basic.image', null, {})
       expect(res.status).toBe(404)
+      expect(res.headers.get('cache-control')).toBeFalsy()
+      expect(res.headers.get('etag')).toBeTruthy()
     })
   }
 
   it('should set 304 status without body when etag matches if-none-match', async () => {
-    // TODO: write test
+    const res1 = await fetchViaHTTP(appPort, `/basic.image.${type}`, null, {})
+    expect(res1.status).toBe(200)
+    // expect(res1.headers.get('Cache-Control')).toBe(
+    //   'public, max-age=0, must-revalidate'
+    // )
+    const etag = res1.headers.get('Etag')
+    expect(etag).toBeTruthy()
+    expectImage(res1, width, height)
+
+    const opts2 = { headers: { 'if-none-match': etag } }
+    const res2 = await fetchViaHTTP(
+      appPort,
+      `/basic.image.${type}`,
+      null,
+      opts2
+    )
+    expect(res2.status).toBe(304)
+    //expect(res2.headers.get('Content-Type')).toBeFalsy()
+    expect(res2.headers.get('Etag')).toBe(etag)
+    expect((await res2.buffer()).length).toBe(0)
   })
 
   it('should error image if SSG upstream errors', async () => {

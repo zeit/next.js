@@ -1492,11 +1492,13 @@ export default class Server {
     delete query.__nextImageNonce
 
     if (isOgImageRequest && 'isOgImage' in components.Component) {
-      const foo = components.Component as any
-      const { type, pagePath } = foo
-      res.setHeader('Content-Type', `image/${type}`)
-      res.setHeader('Cache-Control', 'no-store, must-revalidate')
-      fs.createReadStream(pagePath).pipe(res)
+      const options = components.Component as any
+      const { type, pagePath } = options
+      const buffer = fs.readFileSync(pagePath)
+      sendPayload(req, res, buffer, type, {
+        generateEtags: this.renderOpts.generateEtags,
+        poweredByHeader: this.renderOpts.poweredByHeader,
+      })
       return null
     }
 
@@ -1735,22 +1737,20 @@ export default class Server {
         let isRedirect: boolean | undefined
 
         if (isOgImageRequest) {
-          const {
-            buffer,
-            upstreamStatus,
-            upstreamCache,
-            contentType,
-          } = await ogImageGenerator(
+          const { buffer, upstreamCache, contentType } = await ogImageGenerator(
             req,
             ssgCacheKey || parseUrl(req.url!).pathname!,
             this.nextConfig,
             this.ogImageNonce
           )
 
-          res.statusCode = upstreamStatus
           res.setHeader('Content-Type', contentType)
           res.setHeader('Cache-Control', upstreamCache)
-          res.end(buffer)
+          const type = (contentType.split('/').pop() || 'png') as 'png'
+          sendPayload(req, res, buffer, type, {
+            generateEtags: this.renderOpts.generateEtags,
+            poweredByHeader: this.renderOpts.poweredByHeader,
+          })
 
           return {
             imageData: buffer,
