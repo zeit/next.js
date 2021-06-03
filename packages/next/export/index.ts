@@ -370,6 +370,7 @@ export default async function exportApp(
       domainLocales: i18n?.domains,
       trailingSlash: nextConfig.trailingSlash,
       disableOptimizedLoading: nextConfig.experimental.disableOptimizedLoading,
+      ogImage: nextConfig.experimental.ogImage,
     }
 
     const { serverRuntimeConfig, publicRuntimeConfig } = nextConfig

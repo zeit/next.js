@@ -93,6 +93,19 @@ export async function loadComponents(
   ])
 
   const { getServerSideProps, getStaticProps, getStaticPaths } = ComponentMod
+  const pageConfig = ComponentMod.config || {}
+
+  if (!pathname.endsWith('.image')) {
+    try {
+      // TODO: do we want to use findPageComponent in dev mode to
+      // render meta tags correctly? Currently we only auto-add
+      // complimentary meta tags in production
+      await requirePage(pathname + '.image', distDir, serverless)
+      pageConfig.hasOgImage = true
+    } catch (_) {
+      console.log('idk', _)
+    }
+  }
 
   return {
     App,
@@ -100,7 +113,7 @@ export async function loadComponents(
     Component,
     buildManifest,
     reactLoadableManifest,
-    pageConfig: ComponentMod.config || {},
+    pageConfig,
     ComponentMod,
     getServerSideProps,
     getStaticProps,

@@ -464,6 +464,8 @@ export class Head extends Component<
     const {
       styles,
       ampPath,
+      ogImage,
+      ogImageUrl,
       inAmpMode,
       hybridAmp,
       canonicalBase,
@@ -644,6 +646,14 @@ export class Head extends Component<
           name="next-head-count"
           content={React.Children.count(head || []).toString()}
         />
+        {ogImageUrl ? (
+          <>
+            <meta name="og:image" content={ogImageUrl} />
+            <meta name="og:image:type" content={ogImage.type} />
+            <meta name="og:image:width" content={ogImage.width.toString()} />
+            <meta name="og:image:height" content={ogImage.height.toString()} />
+          </>
+        ) : null}
         {inAmpMode && (
           <>
             <meta

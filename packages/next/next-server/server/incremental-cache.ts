@@ -187,6 +187,8 @@ export class IncrementalCache {
       pageData?: any
       isNotFound?: boolean
       isRedirect?: boolean
+      upstreamCache?: string
+      contentType?: string
     },
     revalidateSeconds?: number | false
   ) {

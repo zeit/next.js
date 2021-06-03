@@ -94,6 +94,7 @@ import escapePathDelimiters from '../lib/router/utils/escape-path-delimiters'
 import { getUtils } from '../../build/webpack/loaders/next-serverless-loader/utils'
 import { PreviewData } from 'next/types'
 import HotReloader from '../../server/hot-reloader'
+import { OgImageConfig } from './og-image-config'
 
 const getCustomRouteMatcher = pathMatch(true)
 
@@ -165,6 +166,7 @@ export default class Server {
     defaultLocale?: string
     domainLocales?: DomainLocales
     distDir: string
+    ogImage: Pick<OgImageConfig, 'height' | 'width' | 'type'>
   }
   private compression?: Middleware
   private incrementalCache: IncrementalCache
@@ -224,6 +226,7 @@ export default class Server {
         .disableOptimizedLoading,
       domainLocales: this.nextConfig.i18n?.domains,
       distDir: this.distDir,
+      ogImage: this.nextConfig.experimental.ogImage!,
     }
 
     // Only the `publicRuntimeConfig` key is exposed to the client side
@@ -1689,6 +1692,8 @@ export default class Server {
           } as UrlWithParsedQuery)
         }
       } else if ((cachedData as any).image) {
+        res.setHeader('Content-Type', (cachedData as any).contentType)
+        res.setHeader('Cache-Control', (cachedData as any).upstreamCache)
         // TODO: set revalidate headers
         ;(cachedData as any).image.pipe(res)
       } else {
@@ -1727,6 +1732,8 @@ export default class Server {
         sprRevalidate: number | false
         isNotFound?: boolean
         isRedirect?: boolean
+        upstreamCache?: string
+        contentType?: string
       }> => {
         let pageData: any
         let html: string | null
@@ -1753,6 +1760,8 @@ export default class Server {
           res.end(buffer)
 
           return {
+            contentType,
+            upstreamCache,
             imageData: buffer,
             html: null,
             pageData: null,
@@ -1923,6 +1932,8 @@ export default class Server {
         sprRevalidate,
         isNotFound,
         isRedirect,
+        upstreamCache,
+        contentType,
       },
     } = await doRender()
     let resHtml = html
@@ -1963,7 +1974,15 @@ export default class Server {
     if (isOrigin && ssgCacheKey) {
       await this.incrementalCache.set(
         ssgCacheKey,
-        { imageData, html: html!, pageData, isNotFound, isRedirect },
+        {
+          imageData,
+          html: html!,
+          pageData,
+          isNotFound,
+          isRedirect,
+          upstreamCache,
+          contentType,
+        },
         sprRevalidate
       )
     }

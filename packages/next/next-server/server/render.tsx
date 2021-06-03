@@ -61,6 +61,7 @@ import {
   Redirect,
 } from '../../lib/load-custom-routes'
 import { DomainLocales } from './config'
+import { OgImageConfig } from './og-image-config'
 
 function noRouter() {
   const message =
@@ -191,6 +192,7 @@ export type RenderOptsPartial = {
   defaultLocale?: string
   domainLocales?: DomainLocales
   disableOptimizedLoading?: boolean
+  ogImage: Pick<OgImageConfig, 'height' | 'width' | 'type'>
 }
 
 export type RenderOpts = LoadComponentsReturnType & RenderOptsPartial
@@ -236,6 +238,8 @@ function renderDocument(
     domainLocales,
     isPreview,
     disableOptimizedLoading,
+    ogImage,
+    ogImageUrl,
   }: RenderOpts & {
     props: any
     docComponentsRendered: DocumentProps['docComponentsRendered']
@@ -260,6 +264,8 @@ function renderDocument(
     scriptLoader: any
     isPreview?: boolean
     autoExport?: boolean
+    ogImage: Pick<OgImageConfig, 'height' | 'width' | 'type'>
+    ogImageUrl?: string
   }
 ): string {
   return (
@@ -308,6 +314,8 @@ function renderDocument(
           scriptLoader,
           locale,
           disableOptimizedLoading,
+          ogImage,
+          ogImageUrl,
           ...docProps,
         })}
       </AmpStateContext.Provider>
@@ -1085,6 +1093,9 @@ export async function renderToHTML(
     isPreview: isPreview === true ? true : undefined,
     autoExport: isAutoExport === true ? true : undefined,
     nextExport: nextExport === true ? true : undefined,
+    ogImageUrl: (pageConfig as any)?.hasOgImage
+      ? `${pathname}.image.${renderOpts.ogImage.type}`
+      : undefined,
   })
 
   if (process.env.NODE_ENV !== 'production') {

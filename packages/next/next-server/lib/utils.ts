@@ -8,6 +8,7 @@ import { Env } from '@next/env'
 import { BuildManifest } from '../server/get-page-files'
 import { DomainLocales } from '../server/config'
 import { PreviewData } from 'next/types'
+import { OgImageConfig } from '../server/og-image-config'
 
 /**
  * Types used by both next and next-server
@@ -206,6 +207,8 @@ export type DocumentProps = DocumentInitialProps & {
   scriptLoader: { afterInteractive?: string[]; beforeInteractive?: any[] }
   locale?: string
   disableOptimizedLoading?: boolean
+  ogImage: Pick<OgImageConfig, 'height' | 'width' | 'type'>
+  ogImageUrl?: string
 }
 
 /**
