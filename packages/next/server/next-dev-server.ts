@@ -40,6 +40,19 @@ import { getNodeOptionsWithoutInspect } from './lib/utils'
 import { withCoalescedInvoke } from '../lib/coalesced-function'
 import { NextConfig } from '../next-server/server/config'
 
+const packageJson = require(pathResolve(__dirname, '../../package.json'))
+// NodeJs Version Validation
+const currentNodeVersion: number = parseFloat(process.versions.node)
+const supportedNodeVersion: number = parseFloat(
+  (packageJson?.engines.node).slice(2)
+)
+// Throws an Error if NodeJs Version is less than 10.13.x
+if (currentNodeVersion < supportedNodeVersion) {
+  throw new Error(
+    `Your current node version ${currentNodeVersion} is not supported! The minimum supported version is ${supportedNodeVersion} and above!`
+  )
+}
+
 if (typeof React.Suspense === 'undefined') {
   throw new Error(
     `The version of React you are using is lower than the minimum required version needed for Next.js. Please upgrade "react" and "react-dom": "npm install react react-dom" https://nextjs.org/docs/messages/invalid-react-version`

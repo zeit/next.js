@@ -56,6 +56,22 @@ const program = new Commander.Command(packageJson.name)
   .parse(process.argv)
 
 async function run(): Promise<void> {
+  // NodeJs Version Validation
+  const currentNodeVersion: number = parseFloat(process.versions.node)
+  const supportedNodeVersion: number = parseFloat(
+    (packageJson?.engines.node).slice(2)
+  )
+
+  // Throws an Error if NodeJs Version is less than 10.13.x
+  if (currentNodeVersion < supportedNodeVersion) {
+    console.error(
+      chalk.red(
+        `Your current node version ${currentNodeVersion} is not supported! The minimum supported version is ${supportedNodeVersion} and above!`
+      )
+    )
+    process.exit(1)
+  }
+
   if (typeof projectPath === 'string') {
     projectPath = projectPath.trim()
   }
