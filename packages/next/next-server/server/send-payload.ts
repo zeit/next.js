@@ -39,7 +39,7 @@ export function sendPayload(
   req: IncomingMessage,
   res: ServerResponse,
   payload: any,
-  type: 'html' | 'json',
+  type: 'html' | 'json' | 'png' | 'jpeg',
   {
     generateEtags,
     poweredByHeader,
@@ -60,10 +60,13 @@ export function sendPayload(
   }
 
   if (!res.getHeader('Content-Type')) {
-    res.setHeader(
-      'Content-Type',
-      type === 'json' ? 'application/json' : 'text/html; charset=utf-8'
-    )
+    if (type === 'json') {
+      res.setHeader('Content-Type', 'application/json')
+    } else if (type === 'html') {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8')
+    } else if (type === 'png' || type === 'jpeg') {
+      res.setHeader('Content-Type', `image/${type}`)
+    }
   }
   res.setHeader('Content-Length', Buffer.byteLength(payload))
   if (options != null) {

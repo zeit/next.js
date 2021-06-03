@@ -9,6 +9,10 @@ export default function BasicPage() {
         <Link href="/basic.image.png">
           <a>/basic.image.png</a>
         </Link>
+        OR
+        <Link href="/basic.image.jpg">
+          <a>/basic.image.jpg</a>
+        </Link>
       </p>
     </div>
   )
