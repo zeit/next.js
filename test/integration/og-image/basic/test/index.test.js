@@ -36,17 +36,23 @@ function runTests({ isDev, width = 1200, height = 630, type = 'png' }) {
     const res = await fetchViaHTTP(appPort, '/basic', null, {})
     expect(res.status).toBe(200)
     expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8')
+    const text = await res.text()
+
     if (isDev) {
       expect(res.headers.get('cache-control')).toBe('no-store, must-revalidate')
       expect(res.headers.get('etag')).toBeTruthy()
     } else {
       expect(res.headers.get('cache-control')).toBeFalsy()
       expect(res.headers.get('etag')).toBeTruthy()
+      expect(text).toMatch(
+        `<meta name="og:image" content="/basic.image.${type}"/>`
+      )
+      expect(text).toMatch(`<meta name="og:image:type" content="${type}"/>`)
+      expect(text).toMatch(`<meta name="og:image:width" content="${width}"/>`)
+      expect(text).toMatch(`<meta name="og:image:height" content="${height}"/>`)
     }
-    const text = await res.text()
     expect(text).toMatch(/Basic Page/m)
-    expect(text).toMatch(`/basic.image.${type}`)
-    //expect(text).toMatch('<meta og:image />')
+    expect(text).toMatch(/View Source to see/)
   })
 
   it('should return basic image binary', async () => {
@@ -270,30 +276,6 @@ describe('OG Image Basic Usage', () => {
     }
     beforeAll(async () => {
       const json = JSON.stringify({
-        experimental: { ogImage },
-      })
-      nextConfig.replace('{ /* replaceme */ }', json)
-      await nextBuild(appDir)
-      appPort = await findPort()
-      app = await nextStart(appDir, appPort)
-    })
-    afterAll(async () => {
-      await killApp(app)
-      nextConfig.restore()
-    })
-
-    runTests({ ...ogImage, isDev: false })
-  })
-
-  describe('Serverless support with next.config.js', () => {
-    const ogImage = {
-      width: 768,
-      height: 403,
-      type: 'jpeg',
-    }
-    beforeAll(async () => {
-      const json = JSON.stringify({
-        target: 'experimental-serverless-trace',
         experimental: { ogImage },
       })
       nextConfig.replace('{ /* replaceme */ }', json)

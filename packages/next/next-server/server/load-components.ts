@@ -102,9 +102,7 @@ export async function loadComponents(
       // complimentary meta tags in production
       await requirePage(pathname + '.image', distDir, serverless)
       pageConfig.hasOgImage = true
-    } catch (_) {
-      console.log('idk', _)
-    }
+    } catch (_) {}
   }
 
   return {
