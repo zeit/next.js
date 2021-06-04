@@ -1575,8 +1575,6 @@ export default async function build(
         server.listen(0, () => resolve(true))
       })
 
-      console.log({ ogImagePaths })
-
       for (const ogPath of ogImagePaths) {
         const isSsg = ssgPages.has(ogPath)
 
@@ -1598,7 +1596,6 @@ export default async function build(
 
         const ext = config.experimental.ogImage?.type
 
-        console.log({ url: urlObj, ext })
         const { buffer } = await getScreenshot(urlObj, ogImageConfig)
         const pageImage = `${ogPath}.${ext}`
 

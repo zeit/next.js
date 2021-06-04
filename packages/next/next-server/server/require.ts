@@ -65,7 +65,6 @@ export function requirePage(
   if (pagePath.endsWith('.html')) {
     return promises.readFile(pagePath, 'utf8')
   } else if (pagePath.match(/\.image\.(jpe?g|png)/)) {
-    console.log('requirePage', { pagePath })
     return { isOgImage: true, pagePath, type: pagePath.split('.').pop() }
   }
   return require(pagePath)
