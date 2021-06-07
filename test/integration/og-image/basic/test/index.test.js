@@ -222,19 +222,28 @@ describe('OG Image Basic Usage', () => {
   })
 
   describe('dev support w/o next.config.js', () => {
+    const ogImage = {
+      enable: true,
+    }
     beforeAll(async () => {
+      const json = JSON.stringify({
+        experimental: { ogImage },
+      })
+      nextConfig.replace('{ /* replaceme */ }', json)
       appPort = await findPort()
       app = await launchApp(appDir, appPort)
     })
     afterAll(async () => {
       await killApp(app)
+      nextConfig.restore()
     })
 
-    runTests({ isDev: true })
+    runTests({ ...ogImage, isDev: true })
   })
 
   describe('dev support with next.config.js', () => {
     const ogImage = {
+      enable: true,
       width: 768,
       height: 403,
       type: 'jpeg',
@@ -256,20 +265,29 @@ describe('OG Image Basic Usage', () => {
   })
 
   describe('Server support w/o next.config.js', () => {
+    const ogImage = {
+      enable: true,
+    }
     beforeAll(async () => {
+      const json = JSON.stringify({
+        experimental: { ogImage },
+      })
+      nextConfig.replace('{ /* replaceme */ }', json)
       await nextBuild(appDir)
       appPort = await findPort()
       app = await nextStart(appDir, appPort)
     })
     afterAll(async () => {
       await killApp(app)
+      nextConfig.restore()
     })
 
-    runTests({ isDev: false })
+    runTests({ ...ogImage, isDev: false })
   })
 
   describe('Server support with next.config.js', () => {
     const ogImage = {
+      enable: true,
       width: 768,
       height: 403,
       type: 'jpeg',

@@ -14,6 +14,7 @@ import {
 } from '../../../client/route-loader'
 import { DomainLocales } from '../../server/config'
 import { denormalizePagePath } from '../../server/denormalize-page-path'
+import { OgImageUtil } from '../../server/og-image-utils'
 import { normalizeLocalePath } from '../i18n/normalize-locale-path'
 import mitt, { MittEmitter } from '../mitt'
 import {
@@ -189,11 +190,12 @@ type Url = UrlObject | string
 export function interpolateAs(
   route: string,
   asPathname: string,
-  query: ParsedUrlQuery
+  query: ParsedUrlQuery,
+  ogImageUtil: OgImageUtil
 ) {
   let interpolatedRoute = ''
 
-  const dynamicRegex = getRouteRegex(route)
+  const dynamicRegex = getRouteRegex(route, ogImageUtil)
   const dynamicGroups = dynamicRegex.groups
   const dynamicMatches =
     // Try to match the dynamic route against the asPath
@@ -300,7 +302,8 @@ export function resolveHref(
       const { result, params } = interpolateAs(
         finalUrl.pathname,
         finalUrl.pathname,
-        query
+        query,
+        ogImageUtil
       )
 
       if (result) {
@@ -354,7 +357,11 @@ function prepareUrlAs(router: NextRouter, url: Url, as?: Url) {
   }
 }
 
-function resolveDynamicRoute(pathname: string, pages: string[]) {
+function resolveDynamicRoute(
+  pathname: string,
+  pages: string[],
+  ogImageUtil: OgImageUtil
+) {
   const cleanPathname = removePathTrailingSlash(denormalizePagePath(pathname!))
 
   if (cleanPathname === '/404' || cleanPathname === '/_error') {
@@ -365,7 +372,10 @@ function resolveDynamicRoute(pathname: string, pages: string[]) {
   if (!pages.includes(cleanPathname!)) {
     // eslint-disable-next-line array-callback-return
     pages.some((page) => {
-      if (isDynamicRoute(page) && getRouteRegex(page).re.test(cleanPathname!)) {
+      if (
+        isDynamicRoute(page) &&
+        getRouteRegex(page, ogImageUtil).re.test(cleanPathname!)
+      ) {
         pathname = page
         return true
       }
@@ -522,6 +532,7 @@ export default class Router implements BaseRouter {
   _wrapApp: (App: AppComponent) => any
   isSsr: boolean
   isFallback: boolean
+  ogImageUtil: OgImageUtil
   _inFlightRoute?: string
   _shallow?: boolean
   locale?: string
@@ -548,6 +559,7 @@ export default class Router implements BaseRouter {
       Component,
       err,
       subscription,
+      ogImageUtil,
       isFallback,
       locale,
       locales,
@@ -563,6 +575,7 @@ export default class Router implements BaseRouter {
       wrapApp: (WrapAppComponent: AppComponent) => any
       err?: Error
       isFallback: boolean
+      ogImageUtil: OgImageUtil
       locale?: string
       locales?: string[]
       defaultLocale?: string
@@ -618,6 +631,7 @@ export default class Router implements BaseRouter {
     this.isSsr = true
 
     this.isFallback = isFallback
+    this.ogImageUtil = ogImageUtil
 
     this.isReady = !!(
       self.__NEXT_DATA__.gssp ||
@@ -984,7 +998,7 @@ export default class Router implements BaseRouter {
           pages,
           rewrites,
           query,
-          (p: string) => resolveDynamicRoute(p, pages),
+          (p: string) => resolveDynamicRoute(p, pages, this.ogImageUtil),
           this.locales
         )
         resolvedAs = rewritesResult.asPath
@@ -997,7 +1011,7 @@ export default class Router implements BaseRouter {
           url = formatWithValidation(parsed)
         }
       } else {
-        parsed.pathname = resolveDynamicRoute(pathname, pages)
+        parsed.pathname = resolveDynamicRoute(pathname, pages, this.ogImageUtil)
 
         if (parsed.pathname !== pathname) {
           pathname = parsed.pathname
@@ -1027,11 +1041,11 @@ export default class Router implements BaseRouter {
       const parsedAs = parseRelativeUrl(resolvedAs)
       const asPathname = parsedAs.pathname
 
-      const routeRegex = getRouteRegex(route)
+      const routeRegex = getRouteRegex(route, this.ogImageUtil)
       const routeMatch = getRouteMatcher(routeRegex)(asPathname)
       const shouldInterpolate = route === asPathname
       const interpolatedAs = shouldInterpolate
-        ? interpolateAs(route, asPathname, query)
+        ? interpolateAs(route, asPathname, query, this.ogImageUtil)
         : ({} as { result: undefined; params: undefined })
 
       if (!routeMatch || (shouldInterpolate && !interpolatedAs.result)) {
@@ -1104,7 +1118,8 @@ export default class Router implements BaseRouter {
             const parsedHref = parseRelativeUrl(destination)
             parsedHref.pathname = resolveDynamicRoute(
               parsedHref.pathname,
-              pages
+              pages,
+              this.ogImageUtil
             )
 
             if (pages.includes(parsedHref.pathname)) {
@@ -1513,7 +1528,7 @@ export default class Router implements BaseRouter {
         pages,
         rewrites,
         parsed.query,
-        (p: string) => resolveDynamicRoute(p, pages),
+        (p: string) => resolveDynamicRoute(p, pages, this.ogImageUtil),
         this.locales
       )
       resolvedAs = delLocale(delBasePath(rewritesResult.asPath), this.locale)
@@ -1526,7 +1541,11 @@ export default class Router implements BaseRouter {
         url = formatWithValidation(parsed)
       }
     } else {
-      parsed.pathname = resolveDynamicRoute(parsed.pathname, pages)
+      parsed.pathname = resolveDynamicRoute(
+        parsed.pathname,
+        pages,
+        this.ogImageUtil
+      )
 
       if (parsed.pathname !== pathname) {
         pathname = parsed.pathname

@@ -1093,7 +1093,7 @@ export async function renderToHTML(
     isPreview: isPreview === true ? true : undefined,
     autoExport: isAutoExport === true ? true : undefined,
     nextExport: nextExport === true ? true : undefined,
-    ogImageUrl: (pageConfig as any)?.hasOgImage
+    ogImageUrl: (pageConfig as any)?.__hasOgImage
       ? `${pathname}.image.${renderOpts.ogImage.type}`
       : undefined,
   })

@@ -1,6 +1,7 @@
 import { buildStaticPaths } from '../build/utils'
 import { loadComponents } from '../next-server/server/load-components'
 import '../next-server/server/node-polyfill-fetch'
+import { OgImageUtil } from '../next-server/server/og-image-utils'
 
 type RuntimeConfig = any
 
@@ -14,6 +15,7 @@ export async function loadStaticPaths(
   pathname: string,
   serverless: boolean,
   config: RuntimeConfig,
+  ogImageUtil: OgImageUtil,
   locales?: string[],
   defaultLocale?: string
 ) {
@@ -26,7 +28,12 @@ export async function loadStaticPaths(
   // update work memory runtime-config
   require('./../next-server/lib/runtime-config').setConfig(config)
 
-  const components = await loadComponents(distDir, pathname, serverless)
+  const components = await loadComponents(
+    distDir,
+    pathname,
+    serverless,
+    ogImageUtil
+  )
 
   if (!components.getStaticPaths) {
     // we shouldn't get to this point since the worker should
@@ -40,6 +47,7 @@ export async function loadStaticPaths(
   return buildStaticPaths(
     pathname,
     components.getStaticPaths,
+    ogImageUtil,
     locales,
     defaultLocale
   )

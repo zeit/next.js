@@ -1,4 +1,5 @@
 export type OgImageConfig = {
+  enable: boolean
   width: number
   height: number
   type: 'png' | 'jpeg'
@@ -6,6 +7,7 @@ export type OgImageConfig = {
 }
 
 export const ogImageConfigDefault: OgImageConfig = {
+  enable: false,
   width: 1200,
   height: 630,
   type: 'png',

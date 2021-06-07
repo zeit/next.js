@@ -3,31 +3,15 @@ import Effect from './side-effect'
 import { AmpStateContext } from './amp-context'
 import { HeadManagerContext } from './head-manager-context'
 import { isInAmpMode } from './amp'
-import { OgImageConfig } from '../server/og-image-config'
 
 type WithInAmpMode = {
   inAmpMode?: boolean
 }
 
-type OgImage = OgImageConfig & { url: string }
-
-export function defaultHead(
-  inAmpMode = false,
-  ogImage?: OgImage
-): JSX.Element[] {
+export function defaultHead(inAmpMode = false): JSX.Element[] {
   const head = [<meta charSet="utf-8" />]
   if (!inAmpMode) {
     head.push(<meta name="viewport" content="width=device-width" />)
-  }
-  if (ogImage) {
-    // Should be 1.9 aspect ratio (768x403) or (1200x630)
-    // https://iamturns.com/open-graph-image-size/
-    head.push(<meta name="og:image" content={ogImage.url} />)
-    head.push(<meta name="og:image:type" content={ogImage.type} />)
-    head.push(<meta name="og:image:width" content={ogImage.width.toString()} />)
-    head.push(
-      <meta name="og:image:height" content={ogImage.height.toString()} />
-    )
   }
   return head
 }

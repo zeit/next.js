@@ -46,6 +46,7 @@ import exportPage from './worker'
 import { PagesManifest } from '../build/webpack/plugins/pages-manifest-plugin'
 import { getPagePath } from '../next-server/server/require'
 import { trace } from '../telemetry/trace'
+import { OgImageUtil } from '../next-server/server/og-image-utils'
 
 const exists = promisify(existsOrig)
 
@@ -540,6 +541,7 @@ export default async function exportApp(
             subFolders,
             buildExport: options.buildExport,
             serverless: isTargetLikeServerless(nextConfig.target),
+            ogImageUtil: new OgImageUtil(nextConfig),
             optimizeFonts: nextConfig.optimizeFonts,
             optimizeImages: nextConfig.experimental.optimizeImages,
             optimizeCss: nextConfig.experimental.optimizeCss,

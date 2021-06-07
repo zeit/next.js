@@ -9,6 +9,7 @@ import {
   GetServerSideProps,
   GetStaticProps,
 } from 'next/types'
+import { OgImageUtil } from './og-image-utils'
 
 export function interopDefault(mod: any) {
   return mod.default || mod
@@ -53,10 +54,16 @@ export async function loadDefaultErrorComponents(distDir: string) {
 export async function loadComponents(
   distDir: string,
   pathname: string,
-  serverless: boolean
+  serverless: boolean,
+  ogImageUtil: OgImageUtil
 ): Promise<LoadComponentsReturnType> {
   if (serverless) {
-    const Component = await requirePage(pathname, distDir, serverless)
+    const Component = await requirePage(
+      pathname,
+      distDir,
+      serverless,
+      ogImageUtil
+    )
     let { getStaticProps, getStaticPaths, getServerSideProps } = Component
 
     getStaticProps = await getStaticProps
@@ -74,9 +81,19 @@ export async function loadComponents(
     } as LoadComponentsReturnType
   }
 
-  const DocumentMod = await requirePage('/_document', distDir, serverless)
-  const AppMod = await requirePage('/_app', distDir, serverless)
-  const ComponentMod = await requirePage(pathname, distDir, serverless)
+  const DocumentMod = await requirePage(
+    '/_document',
+    distDir,
+    serverless,
+    ogImageUtil
+  )
+  const AppMod = await requirePage('/_app', distDir, serverless, ogImageUtil)
+  const ComponentMod = await requirePage(
+    pathname,
+    distDir,
+    serverless,
+    ogImageUtil
+  )
 
   const [
     buildManifest,
@@ -95,13 +112,13 @@ export async function loadComponents(
   const { getServerSideProps, getStaticProps, getStaticPaths } = ComponentMod
   const pageConfig = ComponentMod.config || {}
 
-  if (!pathname.endsWith('.image')) {
+  if (!ogImageUtil.isOgImageHtmlPage(pathname)) {
     try {
       // TODO: do we want to use findPageComponent in dev mode to
       // render meta tags correctly? Currently we only auto-add
       // complimentary meta tags in production
-      await requirePage(pathname + '.image', distDir, serverless)
-      pageConfig.hasOgImage = true
+      await requirePage(pathname + '.image', distDir, serverless, ogImageUtil)
+      pageConfig.__hasOgImage = true
     } catch (_) {}
   }
 

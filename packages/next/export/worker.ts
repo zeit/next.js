@@ -18,6 +18,7 @@ import { FontManifest } from '../next-server/server/font-utils'
 import { normalizeLocalePath } from '../next-server/lib/i18n/normalize-locale-path'
 import { trace } from '../telemetry/trace'
 import { isInAmpMode } from '../next-server/lib/amp'
+import { OgImageUtil } from '../next-server/server/og-image-utils'
 
 const envConfig = require('../next-server/lib/runtime-config')
 
@@ -49,6 +50,7 @@ interface ExportPageInput {
   serverRuntimeConfig: string
   subFolders?: boolean
   serverless: boolean
+  ogImageUtil: OgImageUtil
   optimizeFonts: boolean
   optimizeImages?: boolean
   optimizeCss: any
@@ -97,6 +99,7 @@ export default async function exportPage({
   serverRuntimeConfig,
   subFolders,
   serverless,
+  ogImageUtil,
   optimizeFonts,
   optimizeImages,
   optimizeCss,
@@ -153,7 +156,9 @@ export default async function exportPage({
         .pathname
 
       if (isDynamic && page !== nonLocalizedPath) {
-        params = getRouteMatcher(getRouteRegex(page))(updatedPath) || undefined
+        params =
+          getRouteMatcher(getRouteRegex(page, ogImageUtil))(updatedPath) ||
+          undefined
         if (params) {
           // we have to pass these separately for serverless
           if (!serverless) {
@@ -240,7 +245,7 @@ export default async function exportPage({
           Component: mod,
           getServerSideProps,
           pageConfig,
-        } = await loadComponents(distDir, page, serverless)
+        } = await loadComponents(distDir, page, serverless, ogImageUtil)
         const ampState = {
           ampFirst: pageConfig?.amp === true,
           hasQuery: Boolean(query.amp),
@@ -306,7 +311,12 @@ export default async function exportPage({
           throw new Error(`Failed to render serverless page`)
         }
       } else {
-        const components = await loadComponents(distDir, page, serverless)
+        const components = await loadComponents(
+          distDir,
+          page,
+          serverless,
+          ogImageUtil
+        )
         const ampState = {
           ampFirst: components.pageConfig?.amp === true,
           hasQuery: Boolean(query.amp),

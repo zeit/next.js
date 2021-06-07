@@ -5,6 +5,7 @@ import { PrerenderManifest } from '../../build'
 import { fileExists } from '../../lib/file-exists'
 import { PRERENDER_MANIFEST } from '../lib/constants'
 import { normalizePagePath } from './normalize-page-path'
+import { OgImageUtil } from './og-image-utils'
 
 function toRoute(pathname: string): string {
   return pathname.replace(/\/$/, '').replace(/\/index$/, '') || '/'
@@ -32,6 +33,7 @@ export class IncrementalCache {
   prerenderManifest: PrerenderManifest
   cache: LRUCache<string, IncrementalCacheValue>
   locales?: string[]
+  ogImageUtil: OgImageUtil
 
   constructor({
     max,
@@ -40,6 +42,7 @@ export class IncrementalCache {
     pagesDir,
     flushToDisk,
     locales,
+    ogImageUtil,
   }: {
     dev: boolean
     max?: number
@@ -47,7 +50,9 @@ export class IncrementalCache {
     pagesDir: string
     flushToDisk?: boolean
     locales?: string[]
+    ogImageUtil: OgImageUtil
   }) {
+    this.ogImageUtil = ogImageUtil
     this.incrementalOptions = {
       dev,
       distDir,
@@ -129,14 +134,14 @@ export class IncrementalCache {
       }
 
       try {
-        if (pathname.match(/\.image\.(jpe?g|png)/)) {
+        if (this.ogImageUtil.isOgImageBinaryPage(pathname)) {
           const outputPath = this.getSeedPath(pathname, '')
 
           if (await fileExists(outputPath, 'file')) {
             data = {
-              image: createReadStream(outputPath),
+              ogImageStream: createReadStream(outputPath),
               revalidateAfter: this.calculateRevalidate(
-                pathname.replace(/\.(jpe\?g|png)/, '')
+                this.ogImageUtil.convertBinaryPageToHtmlPage(pathname)
               ),
             } as any
           }
@@ -205,7 +210,7 @@ export class IncrementalCache {
         initialRevalidateSeconds: revalidateSeconds,
       }
     }
-    const isOgImage = pathname.match(/\.image\.(jpe?g|png)/)
+    const isOgImage = this.ogImageUtil.isOgImageBinaryPage(pathname)
 
     pathname = normalizePagePath(pathname)
 

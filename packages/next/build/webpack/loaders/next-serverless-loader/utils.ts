@@ -23,6 +23,7 @@ import { denormalizePagePath } from '../../../../next-server/server/denormalize-
 import cookie from 'next/dist/compiled/cookie'
 import { TEMPORARY_REDIRECT_STATUS } from '../../../../next-server/lib/constants'
 import { NextConfig } from '../../../../next-server/server/config'
+import { OgImageUtil } from '../../../../next-server/server/og-image-utils'
 
 const getCustomRouteMatcher = pathMatch(true)
 
@@ -57,6 +58,7 @@ export type ServerlessHandlerCtx = {
   poweredByHeader: boolean
   canonicalBase: string
   encodedPreviewProps: __ApiPreviewProps
+  ogImageUtil: OgImageUtil
   i18n?: NextConfig['i18n']
 }
 
@@ -66,19 +68,21 @@ export function getUtils({
   basePath,
   rewrites,
   pageIsDynamic,
+  ogImageUtil,
 }: {
   page: ServerlessHandlerCtx['page']
   i18n?: ServerlessHandlerCtx['i18n']
   basePath: ServerlessHandlerCtx['basePath']
   rewrites: ServerlessHandlerCtx['rewrites']
   pageIsDynamic: ServerlessHandlerCtx['pageIsDynamic']
+  ogImageUtil: ServerlessHandlerCtx['ogImageUtil']
 }) {
   let defaultRouteRegex: ReturnType<typeof getRouteRegex> | undefined
   let dynamicRouteMatcher: ReturnType<typeof getRouteMatcher> | undefined
   let defaultRouteMatches: ParsedUrlQuery | undefined
 
   if (pageIsDynamic) {
-    defaultRouteRegex = getRouteRegex(page)
+    defaultRouteRegex = getRouteRegex(page, ogImageUtil)
     dynamicRouteMatcher = getRouteMatcher(defaultRouteRegex)
     defaultRouteMatches = dynamicRouteMatcher(page) as ParsedUrlQuery
   }

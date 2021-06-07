@@ -37,8 +37,8 @@ export async function imageOptimizer(
   nextConfig: NextConfig,
   distDir: string
 ) {
-  const imageData: ImageConfig = nextConfig.images || imageConfigDefault
-  const { deviceSizes = [], imageSizes = [], domains = [], loader } = imageData
+  const config: ImageConfig = nextConfig.images || imageConfigDefault
+  const { deviceSizes = [], imageSizes = [], domains = [], loader } = config
 
   if (loader !== 'default') {
     await server.render404(req, res, parsedUrl)

@@ -95,6 +95,7 @@ import { getUtils } from '../../build/webpack/loaders/next-serverless-loader/uti
 import { PreviewData } from 'next/types'
 import HotReloader from '../../server/hot-reloader'
 import { OgImageConfig } from './og-image-config'
+import { OgImageUtil } from './og-image-utils'
 
 const getCustomRouteMatcher = pathMatch(true)
 
@@ -135,6 +136,7 @@ export default class Server {
   protected dir: string
   protected quiet: boolean
   protected nextConfig: NextConfig
+  protected ogImageUtil: OgImageUtil
   protected distDir: string
   protected pagesDir?: string
   protected publicDir: string
@@ -188,6 +190,7 @@ export default class Server {
     loadEnvConfig(this.dir, dev, Log)
 
     this.nextConfig = conf
+    this.ogImageUtil = new OgImageUtil(conf)
     this.distDir = join(this.dir, this.nextConfig.distDir)
     this.publicDir = join(this.dir, CLIENT_PUBLIC_FILES_PATH)
     this.hasStaticDir = !minimalMode && fs.existsSync(join(this.dir, 'static'))
@@ -271,6 +274,7 @@ export default class Server {
       ),
       locales: this.nextConfig.i18n?.locales,
       flushToDisk: !minimalMode && this.nextConfig.experimental.sprFlushToDisk,
+      ogImageUtil: this.ogImageUtil,
     })
 
     /**
@@ -373,6 +377,7 @@ export default class Server {
         i18n: this.nextConfig.i18n,
         basePath: this.nextConfig.basePath,
         rewrites: combinedRewrites,
+        ogImageUtil: this.ogImageUtil,
       })
 
       utils.handleRewrites(req, parsedUrl)
@@ -1251,7 +1256,7 @@ export default class Server {
         addedPages.add(page)
         return {
           page,
-          match: getRouteMatcher(getRouteRegex(page)),
+          match: getRouteMatcher(getRouteRegex(page, this.ogImageUtil)),
         }
       })
       .filter((item): item is DynamicRouteItem => Boolean(item))
@@ -1362,7 +1367,7 @@ export default class Server {
     // we don't allow rendering the HTML without the nonce in
     // production
     if (
-      pathname.endsWith('.image') &&
+      this.ogImageUtil.isOgImageHtmlPage(pathname) &&
       // we allow the HTML to viewed in development for debugging
       !this.renderOpts.dev &&
       // we need to look-up dynamic routes still
@@ -1380,15 +1385,14 @@ export default class Server {
       pathname,
     ].filter(Boolean)
 
-    // TODO: replace with official image extension list
-    const isOgImage = pathname.match(/\.image\.(jpe?g|png)/)
+    const isOgImage = this.ogImageUtil.isOgImageBinaryPage(pathname)
 
     if (isOgImage) {
       query.__nextOgImage = 'true'
       // if no statically generated version is available we
       // check if the pathname is valid and if so we render the
       // image on-demand
-      paths.push(pathname.replace(/\.(jpe?g|png)$/, ''))
+      paths.push(this.ogImageUtil.convertBinaryPageToHtmlPage(pathname))
     }
 
     if (query.__nextLocale) {
@@ -1405,7 +1409,8 @@ export default class Server {
         const components = await loadComponents(
           this.distDir,
           pagePath!,
-          !this.renderOpts.dev && this._isLikeServerless
+          !this.renderOpts.dev && this._isLikeServerless,
+          this.ogImageUtil
         )
         // if loading an static HTML file the locale is required
         // to be present since all HTML files are output under their locale
@@ -1497,7 +1502,7 @@ export default class Server {
     if (isOgImageRequest && 'isOgImage' in components.Component) {
       const options = components.Component as any
       const { type, pagePath } = options
-      const buffer = fs.readFileSync(pagePath)
+      const buffer = await fs.promises.readFile(pagePath)
       sendPayload(req, res, buffer, type, {
         generateEtags: this.renderOpts.generateEtags,
         poweredByHeader: this.renderOpts.poweredByHeader,
@@ -1507,7 +1512,7 @@ export default class Server {
 
     if (
       !is404Page &&
-      req.url!.endsWith('.image') &&
+      this.ogImageUtil.isOgImageHtmlPage(req.url || '') &&
       query.__nextImageNonce !== this.ogImageNonce &&
       !this.renderOpts.dev
     ) {
@@ -1693,11 +1698,12 @@ export default class Server {
             query,
           } as UrlWithParsedQuery)
         }
-      } else if ((cachedData as any).image) {
-        res.setHeader('Content-Type', (cachedData as any).contentType)
-        res.setHeader('Cache-Control', (cachedData as any).upstreamCache)
+      } else if ('ogImageStream' in cachedData) {
+        const ogImageData = cachedData as any
+        res.setHeader('Content-Type', ogImageData.contentType)
+        res.setHeader('Cache-Control', ogImageData.upstreamCache)
         // TODO: set revalidate headers
-        ;(cachedData as any).image.pipe(res)
+        ogImageData.ogImageStream.pipe(res)
       } else {
         sendPayload(
           req,
@@ -2035,9 +2041,9 @@ export default class Server {
 
       if (this.dynamicRoutes) {
         for (const dynamicRoute of this.dynamicRoutes) {
-          const isOgImage = pathname.match(/\.image\.(jpe?g|png)/)
+          const isOgImage = this.ogImageUtil.isOgImageBinaryPage(pathname)
           const dynamicPathname = isOgImage
-            ? pathname.replace(/\.(jpe?g|png)/, '')
+            ? this.ogImageUtil.convertBinaryPageToHtmlPage(pathname)
             : pathname
 
           const params = dynamicRoute.match(dynamicPathname)

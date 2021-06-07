@@ -244,7 +244,7 @@ export default class DevServer extends Server {
             .filter(isDynamicRoute)
             .map((page) => ({
               page,
-              match: getRouteMatcher(getRouteRegex(page)),
+              match: getRouteMatcher(getRouteRegex(page, this.ogImageUtil)),
             }))
 
           this.router.setDynamicRoutes(this.dynamicRoutes)
@@ -576,6 +576,7 @@ export default class DevServer extends Server {
           publicRuntimeConfig,
           serverRuntimeConfig,
         },
+        this.ogImageUtil,
         locales,
         defaultLocale
       )
@@ -616,11 +617,13 @@ export default class DevServer extends Server {
     // In dev mode we use on demand entries to compile the page before rendering
     try {
       // TODO: replace with official image extension list
-      const isOgImage = pathname.match(/\.image\.(jpe?g|png)/)
+      const isOgImage = this.ogImageUtil.isOgImageBinaryPage(pathname)
       let ensurePathname = pathname
 
       if (isOgImage) {
-        ensurePathname = ensurePathname.replace(/\.(jpe?g|png)$/, '')
+        ensurePathname = this.ogImageUtil.convertBinaryPageToHtmlPage(
+          ensurePathname
+        )
       }
 
       await this.hotReloader!.ensurePage(ensurePathname).catch(

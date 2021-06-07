@@ -9,6 +9,7 @@ import {
 import { normalizePagePath, denormalizePagePath } from './normalize-page-path'
 import { PagesManifest } from '../../build/webpack/plugins/pages-manifest-plugin'
 import { normalizeLocalePath } from '../lib/i18n/normalize-locale-path'
+import { OgImageUtil } from './og-image-utils'
 
 export function pageNotFoundError(page: string): Error {
   const err: any = new Error(`Cannot find module for page: ${page}`)
@@ -59,12 +60,13 @@ export function getPagePath(
 export function requirePage(
   page: string,
   distDir: string,
-  serverless: boolean
+  serverless: boolean,
+  ogImageUtil: OgImageUtil
 ): any {
   const pagePath = getPagePath(page, distDir, serverless)
   if (pagePath.endsWith('.html')) {
     return promises.readFile(pagePath, 'utf8')
-  } else if (pagePath.match(/\.image\.(jpe?g|png)/)) {
+  } else if (ogImageUtil.isOgImageBinaryPage(pagePath)) {
     return { isOgImage: true, pagePath, type: pagePath.split('.').pop() }
   }
   return require(pagePath)

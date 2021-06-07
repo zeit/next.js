@@ -1,3 +1,5 @@
+import { OgImageUtil } from '../../../server/og-image-utils'
+
 export interface Group {
   pos: number
   repeat: boolean
@@ -23,7 +25,8 @@ function parseParameter(param: string) {
 }
 
 export function getRouteRegex(
-  normalizedRoute: string
+  normalizedRoute: string,
+  ogImageUtil: OgImageUtil
 ): {
   re: RegExp
   namedRegex?: string
@@ -34,26 +37,26 @@ export function getRouteRegex(
     .slice(1)
     .split('/')
 
-  const isImageRoute = normalizedRoute.endsWith('.image')
+  const isOgImageRoute = ogImageUtil.isOgImageHtmlPage(normalizedRoute)
 
   const groups: { [groupName: string]: Group } = {}
   let groupIndex = 1
   const parameterizedRoute = segments
     .map((segment, idx) => {
-      const isImageSegment =
-        isImageRoute &&
+      const isOgImageSegment =
+        isOgImageRoute &&
         idx === segments.length - 1 &&
         segment.endsWith('].image')
 
       if (
         segment.startsWith('[') &&
-        (isImageSegment || segment.endsWith(']'))
+        (isOgImageSegment || segment.endsWith(']'))
       ) {
         const { key, optional, repeat } = parseParameter(
-          isImageSegment ? segment.slice(1, -7) : segment.slice(1, -1)
+          isOgImageSegment ? segment.slice(1, -7) : segment.slice(1, -1)
         )
         groups[key] = { pos: groupIndex++, repeat, optional }
-        const imageMatch = isImageSegment ? '(?:\\.image)' : ''
+        const imageMatch = isOgImageSegment ? '(?:\\.image)' : ''
         return repeat
           ? optional
             ? `(?:/(.+?))?${imageMatch}`

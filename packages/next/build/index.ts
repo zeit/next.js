@@ -94,6 +94,7 @@ import { normalizeLocalePath } from '../next-server/lib/i18n/normalize-locale-pa
 import { isWebpack5 } from 'next/dist/compiled/webpack/webpack'
 import { getScreenshot } from '../next-server/server/og-image-generator'
 import { ogImageConfigDefault } from '../next-server/server/og-image-config'
+import { OgImageUtil } from '../next-server/server/og-image-utils'
 
 const staticCheckWorker = require.resolve('./utils')
 
@@ -135,6 +136,7 @@ export default async function build(
     const config: NextConfig = await nextBuildSpan
       .traceChild('load-next-config')
       .traceAsyncFn(() => loadConfig(PHASE_PRODUCTION_BUILD, dir, conf))
+    const ogImageUtil = new OgImageUtil(config)
     const { target } = config
     const buildId: string = await nextBuildSpan
       .traceChild('generate-buildid')
@@ -407,7 +409,7 @@ export default async function build(
       dynamicRoutes: getSortedRoutes(pageKeys)
         .filter(isDynamicRoute)
         .map((page) => {
-          const routeRegex = getRouteRegex(page)
+          const routeRegex = getRouteRegex(page, ogImageUtil)
           return {
             page,
             regex: normalizeRouteRegex(routeRegex.re.source),
@@ -699,7 +701,8 @@ export default async function build(
             distDir,
             isLikeServerless,
             runtimeEnvConfig,
-            false
+            false,
+            ogImageUtil
           ))
       )
       // we don't output _app in serverless mode so use _app export
@@ -711,14 +714,16 @@ export default async function build(
         distDir,
         isLikeServerless,
         runtimeEnvConfig,
-        true
+        true,
+        ogImageUtil
       )
 
       const namedExportsPromise = staticCheckWorkers.getNamedExports(
         appPageToCheck,
         distDir,
         isLikeServerless,
-        runtimeEnvConfig
+        runtimeEnvConfig,
+        ogImageUtil
       )
 
       // eslint-disable-next-line no-shadow
@@ -765,6 +770,7 @@ export default async function build(
                     page,
                     distDir,
                     isLikeServerless,
+                    ogImageUtil,
                     runtimeEnvConfig,
                     config.i18n?.locales,
                     config.i18n?.defaultLocale,
@@ -923,7 +929,10 @@ export default async function build(
         let routeKeys: { [named: string]: string } | undefined
 
         if (isDynamicRoute(page)) {
-          const routeRegex = getRouteRegex(dataRoute.replace(/\.json$/, ''))
+          const routeRegex = getRouteRegex(
+            dataRoute.replace(/\.json$/, ''),
+            ogImageUtil
+          )
 
           dataRouteRegex = normalizeRouteRegex(
             routeRegex.re.source.replace(/\(\?:\\\/\)\?\$$/, '\\.json$')
@@ -1457,7 +1466,9 @@ export default async function build(
         )
 
         finalDynamicRoutes[tbdRoute] = {
-          routeRegex: normalizeRouteRegex(getRouteRegex(tbdRoute).re.source),
+          routeRegex: normalizeRouteRegex(
+            getRouteRegex(tbdRoute, ogImageUtil).re.source
+          ),
           dataRoute,
           fallback: ssgBlockingFallbackPages.has(tbdRoute)
             ? null
@@ -1465,10 +1476,10 @@ export default async function build(
             ? `${normalizedRoute}.html`
             : false,
           dataRouteRegex: normalizeRouteRegex(
-            getRouteRegex(dataRoute.replace(/\.json$/, '')).re.source.replace(
-              /\(\?:\\\/\)\?\$$/,
-              '\\.json$'
-            )
+            getRouteRegex(
+              dataRoute.replace(/\.json$/, ''),
+              ogImageUtil
+            ).re.source.replace(/\(\?:\\\/\)\?\$$/, '\\.json$')
           ),
         }
       })
@@ -1538,7 +1549,7 @@ export default async function build(
       ...staticPages,
       ...ssgPages,
       ...Array.from(additionalSsgPaths.values()).flat(),
-    ].filter((page) => page.endsWith('.image'))
+    ].filter((page) => ogImageUtil.isOgImageHtmlPage(page))
 
     if (ogImagePaths.length > 0) {
       delete require.cache[

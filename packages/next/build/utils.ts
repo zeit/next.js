@@ -32,6 +32,7 @@ import { normalizeLocalePath } from '../next-server/lib/i18n/normalize-locale-pa
 import * as Log from './output/log'
 import { loadComponents } from '../next-server/server/load-components'
 import { trace } from '../telemetry/trace'
+import { OgImageUtil } from '../next-server/server/og-image-utils'
 
 const fileGzipStats: { [k: string]: Promise<number> | undefined } = {}
 const fsStatGzip = (file: string) => {
@@ -547,6 +548,7 @@ export async function getJsPageSizeInKb(
 export async function buildStaticPaths(
   page: string,
   getStaticPaths: GetStaticPaths,
+  ogImageUtil: OgImageUtil,
   locales?: string[],
   defaultLocale?: string
 ): Promise<
@@ -557,7 +559,7 @@ export async function buildStaticPaths(
 > {
   const prerenderPaths = new Set<string>()
   const encodedPrerenderPaths = new Set<string>()
-  const _routeRegex = getRouteRegex(page)
+  const _routeRegex = getRouteRegex(page, ogImageUtil)
   const _routeMatcher = getRouteMatcher(_routeRegex)
 
   // Get the default list of allowed params.
@@ -747,6 +749,7 @@ export async function isPageStatic(
   page: string,
   distDir: string,
   serverless: boolean,
+  ogImageUtil: OgImageUtil,
   runtimeEnvConfig: any,
   locales?: string[],
   defaultLocale?: string,
@@ -766,7 +769,12 @@ export async function isPageStatic(
   return isPageStaticSpan.traceAsyncFn(async () => {
     try {
       require('../next-server/lib/runtime-config').setConfig(runtimeEnvConfig)
-      const components = await loadComponents(distDir, page, serverless)
+      const components = await loadComponents(
+        distDir,
+        page,
+        serverless,
+        ogImageUtil
+      )
       const mod = components.ComponentMod
       const Comp = mod.default || mod
 
@@ -848,6 +856,7 @@ export async function isPageStatic(
         } = await buildStaticPaths(
           page,
           mod.getStaticPaths,
+          ogImageUtil,
           locales,
           defaultLocale
         ))
@@ -878,11 +887,17 @@ export async function hasCustomGetInitialProps(
   distDir: string,
   isLikeServerless: boolean,
   runtimeEnvConfig: any,
-  checkingApp: boolean
+  checkingApp: boolean,
+  ogImageUtil: OgImageUtil
 ): Promise<boolean> {
   require('../next-server/lib/runtime-config').setConfig(runtimeEnvConfig)
 
-  const components = await loadComponents(distDir, page, isLikeServerless)
+  const components = await loadComponents(
+    distDir,
+    page,
+    isLikeServerless,
+    ogImageUtil
+  )
   let mod = components.ComponentMod
 
   if (checkingApp) {
@@ -898,10 +913,16 @@ export async function getNamedExports(
   page: string,
   distDir: string,
   isLikeServerless: boolean,
-  runtimeEnvConfig: any
+  runtimeEnvConfig: any,
+  ogImageUtil: OgImageUtil
 ): Promise<Array<string>> {
   require('../next-server/lib/runtime-config').setConfig(runtimeEnvConfig)
-  const components = await loadComponents(distDir, page, isLikeServerless)
+  const components = await loadComponents(
+    distDir,
+    page,
+    isLikeServerless,
+    ogImageUtil
+  )
   let mod = components.ComponentMod
 
   return Object.keys(mod)
