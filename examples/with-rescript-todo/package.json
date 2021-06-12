@@ -1,0 +1,23 @@
+{
+  "name": "with-reasonml-todo",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "next",
+    "watch": "rescript build -w",
+    "dev:next": "next dev",
+    "build": "rescript && next build",
+    "start": "next start"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "next": "latest",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.8.4",
+    "next-transpile-modules": "7.0.0",
+    "@rescript/react": "^0.10.1",
+    "rescript": "^9.1.2"
+  }
+}
