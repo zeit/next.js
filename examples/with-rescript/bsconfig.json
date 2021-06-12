@@ -1,0 +1,20 @@
+{
+  "name": "with-rescript",
+  "reason": { "react-jsx": 3 },
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true
+    }
+  ],
+  "bs-dependencies": ["@rescript/react"],
+  "package-specs": {
+    "module": "es6",
+    "in-source": true
+  },
+  "suffix": ".bs.js",
+  "warnings": {
+    "number": "-3",
+    "error": "+101+8"
+  }
+}
