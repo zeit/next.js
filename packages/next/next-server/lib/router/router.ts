@@ -366,7 +366,7 @@ function resolveDynamicRoute(pathname: string, pages: string[]) {
   }
 
   // handle resolving href for dynamic routes
-  if (!pages.includes(cleanPathname!)) {
+  if (pages && !pages.includes(cleanPathname!)) {
     // eslint-disable-next-line array-callback-return
     pages.some((page) => {
       if (isDynamicRoute(page) && getRouteRegex(page).re.test(cleanPathname!)) {
@@ -1112,7 +1112,7 @@ export default class Router implements BaseRouter {
               pages
             )
 
-            if (pages.includes(parsedHref.pathname)) {
+            if (pages?.includes(parsedHref.pathname)) {
               const { url: newUrl, as: newAs } = prepareUrlAs(
                 this,
                 destination,
