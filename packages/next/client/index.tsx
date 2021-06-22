@@ -19,6 +19,7 @@ import {
   getURL,
   loadGetInitialProps,
   NEXT_DATA,
+  NextPageContext,
   ST,
 } from '../next-server/lib/utils'
 import { Portal } from './portal'
@@ -260,7 +261,7 @@ class Container extends React.Component<{
 }
 
 export const emitter: MittEmitter = mitt()
-let CachedComponent: React.ComponentType
+let InitialComponent: React.ComponentType
 
 export default async (opts: { webpackHMR?: any } = {}) => {
   // This makes sure this specific lines are removed in production
@@ -320,11 +321,11 @@ export default async (opts: { webpackHMR?: any } = {}) => {
     if ('error' in pageEntrypoint) {
       throw pageEntrypoint.error
     }
-    CachedComponent = pageEntrypoint.component
+    InitialComponent = pageEntrypoint.component
 
     if (process.env.NODE_ENV !== 'production') {
       const { isValidElementType } = require('react-is')
-      if (!isValidElementType(CachedComponent)) {
+      if (!isValidElementType(InitialComponent)) {
         throw new Error(
           `The default export is not a React Component in page: "${page}"`
         )
@@ -377,7 +378,7 @@ export default async (opts: { webpackHMR?: any } = {}) => {
     initialProps: hydrateProps,
     pageLoader,
     App: CachedApp,
-    Component: CachedComponent,
+    Component: InitialComponent,
     wrapApp,
     err: initialErr,
     isFallback: Boolean(isFallback),
@@ -402,7 +403,7 @@ export default async (opts: { webpackHMR?: any } = {}) => {
   const renderCtx: RenderRouteInfo = {
     App: CachedApp,
     initial: true,
-    Component: CachedComponent,
+    Component: InitialComponent,
     props: hydrateProps,
     err: initialErr,
   }
@@ -470,13 +471,10 @@ export function renderError(renderErrorProps: RenderErrorProps): Promise<any> {
       // In production we do a normal render with the `ErrorComponent` as component.
       // If we've gotten here upon initial render, we can use the props from the server.
       // Otherwise, we need to call `getInitialProps` on `App` before mounting.
-      const AppTree = wrapApp(App)
-      const appCtx = {
-        Component: ErrorComponent,
-        AppTree,
-        router,
-        ctx: { err, pathname: page, query, asPath, AppTree },
-      }
+      const ctx = { err, pathname: page, query, asPath } as NextPageContext
+      const AppTree = wrapApp(App, ErrorComponent, ctx)
+      ctx.AppTree = AppTree
+      const appCtx = { Component: ErrorComponent, AppTree, router, ctx }
       return Promise.resolve(
         renderErrorProps.props
           ? renderErrorProps.props
@@ -582,8 +580,9 @@ function clearMarks(): void {
 }
 
 function AppContainer({
+  contextRouter,
   children,
-}: React.PropsWithChildren<{}>): React.ReactElement {
+}: React.PropsWithChildren<{ contextRouter: Router }>): React.ReactElement {
   return (
     <Container
       fn={(error) =>
@@ -592,7 +591,7 @@ function AppContainer({
         )
       }
     >
-      <RouterContext.Provider value={makePublicRouterInstance(router)}>
+      <RouterContext.Provider value={makePublicRouterInstance(contextRouter)}>
         <HeadManagerContext.Provider value={headManager}>
           {children}
         </HeadManagerContext.Provider>
@@ -601,20 +600,30 @@ function AppContainer({
   )
 }
 
-const wrapApp = (App: AppComponent) => (
-  wrappedAppProps: Record<string, any>
-): JSX.Element => {
-  const appProps: AppProps = {
-    ...wrappedAppProps,
-    Component: CachedComponent,
-    err: hydrateErr,
-    router,
+function wrapApp(
+  App: AppComponent,
+  Component: React.ComponentType,
+  ctx: NextPageContext
+) {
+  const mockRouter = {
+    pathname: ctx.pathname,
+    query: ctx.query,
+    asPath: ctx.asPath,
+  } as Router
+  function AppTree(wrappedAppProps: Record<string, any>) {
+    const appProps: AppProps = {
+      ...wrappedAppProps,
+      Component,
+      err: hydrateErr,
+      router: mockRouter,
+    }
+    return (
+      <AppContainer contextRouter={mockRouter}>
+        <App {...appProps} />
+      </AppContainer>
+    )
   }
-  return (
-    <AppContainer>
-      <App {...appProps} />
-    </AppContainer>
-  )
+  return AppTree
 }
 
 let lastAppProps: AppProps
@@ -776,7 +785,7 @@ function doRender(input: RenderRouteInfo): Promise<any> {
   const elem: JSX.Element = (
     <>
       <Head callback={onHeadCommit} />
-      <AppContainer>
+      <AppContainer contextRouter={router}>
         <App {...appProps} />
         <Portal type="next-route-announcer">
           <RouteAnnouncer />
