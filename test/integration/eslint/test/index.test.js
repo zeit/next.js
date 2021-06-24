@@ -1,8 +1,11 @@
 import fs from 'fs-extra'
 import { join } from 'path'
+import prompts from 'prompts'
+
+import { writeFile, readFile } from 'fs-extra'
+
 import findUp from 'next/dist/compiled/find-up'
 import { nextBuild, nextLint } from 'next-test-utils'
-import { writeFile, readFile } from 'fs-extra'
 
 jest.setTimeout(1000 * 60 * 2)
 
@@ -93,7 +96,7 @@ describe('ESLint', () => {
   })
 
   describe('Next Lint', () => {
-    test('first time setup', async () => {
+    test('show a prompt to set up ESLint if no configuration detected', async () => {
       const eslintrc = join(dirFirstTimeSetup, '.eslintrc')
       await writeFile(eslintrc, '')
 
@@ -102,14 +105,14 @@ describe('ESLint', () => {
         stderr: true,
       })
       const output = stdout + stderr
-      const eslintrcContent = await readFile(eslintrc, 'utf8')
-
       expect(output).toContain(
-        'We detected an empty ESLint configuration file (.eslintrc) and updated it for you to include the base Next.js ESLint configuration.'
+        'No ESLint configuration detected. How would you like to configure it?'
       )
-      expect(eslintrcContent.trim().replace(/\s/g, '')).toMatch(
-        '{"extends":"next"}'
-      )
+
+      // Different options that can be selected
+      expect(output).toContain('Strict (recommended)')
+      expect(output).toContain('Base')
+      expect(output).toContain('None')
     })
 
     test('shows warnings and errors', async () => {
@@ -128,6 +131,9 @@ describe('ESLint', () => {
     })
 
     test('success message when no warnings or errors', async () => {
+      const eslintrc = join(dirFirstTimeSetup, '.eslintrc')
+      await writeFile(eslintrc, '{ "extends": "next", "root": true }')
+
       const { stdout, stderr } = await nextLint(dirFirstTimeSetup, [], {
         stdout: true,
         stderr: true,
@@ -165,7 +171,7 @@ describe('ESLint', () => {
 
         const output = stdout + stderr
         expect(output).not.toContain(
-          'We created the .eslintrc file for you and included the base Next.js ESLint configuration'
+          'We created the .eslintrc file for you and included your selected configuration'
         )
       } finally {
         // Restore original .eslintrc file
