@@ -1,8 +1,7 @@
 import fs from 'fs-extra'
 import { join } from 'path'
-import prompts from 'prompts'
 
-import { writeFile, readFile } from 'fs-extra'
+import { writeFile } from 'fs-extra'
 
 import findUp from 'next/dist/compiled/find-up'
 import { nextBuild, nextLint } from 'next-test-utils'
@@ -16,6 +15,7 @@ const dirCustomDirectories = join(__dirname, '../custom-directories')
 const dirConfigInPackageJson = join(__dirname, '../config-in-package-json')
 const dirInvalidEslintVersion = join(__dirname, '../invalid-eslint-version')
 const dirMaxWarnings = join(__dirname, '../max-warnings')
+const dirNoEslintPlugin = join(__dirname, '../no-eslint-plugin')
 
 describe('ESLint', () => {
   describe('Next Build', () => {
@@ -28,13 +28,9 @@ describe('ESLint', () => {
         stderr: true,
       })
       const output = stdout + stderr
-      const eslintrcContent = await readFile(eslintrc, 'utf8')
 
       expect(output).toContain(
-        'We detected an empty ESLint configuration file (.eslintrc) and updated it for you to include the base Next.js ESLint configuration.'
-      )
-      expect(eslintrcContent.trim().replace(/\s/g, '')).toMatch(
-        '{"extends":"next"}'
+        'No ESLint configuration detected. Run next lint to begin setup'
       )
     })
 
@@ -91,6 +87,18 @@ describe('ESLint', () => {
       const output = stdout + stderr
       expect(output).toContain(
         'Your project has an older version of ESLint installed'
+      )
+    })
+
+    test('missing Next.js plugin', async () => {
+      const { stdout, stderr } = await nextBuild(dirNoEslintPlugin, [], {
+        stdout: true,
+        stderr: true,
+      })
+
+      const output = stdout + stderr
+      expect(output).toContain(
+        'The Next.js plugin was not detected in your ESLint configuration'
       )
     })
   })
