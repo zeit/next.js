@@ -105,6 +105,7 @@ export const defaultConfig: NextConfig = {
         (os.cpus() || { length: 1 }).length) - 1
     ),
     plugins: false,
+    popStateShallowRoute: false,
     profiling: false,
     sprFlushToDisk: true,
     workerThreads: false,
