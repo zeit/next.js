@@ -7,12 +7,17 @@ export const VALID_LOADERS = [
 
 export type LoaderValue = typeof VALID_LOADERS[number]
 
+export const VALID_FORMATS = ['webp', 'avif', 'auto'] as const
+
+export type ImageFormat = typeof VALID_FORMATS[number]
+
 export type ImageConfig = {
   deviceSizes: number[]
   imageSizes: number[]
   loader: LoaderValue
   path: string
   domains?: string[]
+  formats?: ImageFormat[]
   disableStaticImages: boolean
 }
 
@@ -22,5 +27,6 @@ export const imageConfigDefault: ImageConfig = {
   path: '/_next/image',
   loader: 'default',
   domains: [],
+  formats: [],
   disableStaticImages: false,
 }
