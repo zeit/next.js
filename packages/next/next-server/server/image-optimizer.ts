@@ -63,7 +63,7 @@ export async function imageOptimizer(
   let isAbsolute: boolean
 
   if (url.startsWith('/')) {
-    href = url
+    href = (nextConfig.basePath || '') + url
     isAbsolute = false
   } else {
     let hrefParsed: URL
