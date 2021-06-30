@@ -37,14 +37,18 @@ export type DocumentType = NextComponentType<
   ): React.ReactElement
 }
 
-export type AppType = NextComponentType<
+export type AppType<
+  R extends NextRouter = NextRouter,
+  P = {},
+  IP = any
+> = NextComponentType<
   AppContextType,
-  AppInitialProps,
-  AppPropsType
+  AppInitialProps<IP>,
+  AppPropsType<R, P, IP>
 >
 
-export type AppTreeType = ComponentType<
-  AppInitialProps & { [name: string]: any }
+export type AppTreeType<IP = any> = ComponentType<
+  AppInitialProps<IP> & { [name: string]: any }
 >
 
 /**
@@ -160,14 +164,15 @@ export type AppContextType<R extends NextRouter = NextRouter> = {
   router: R
 }
 
-export type AppInitialProps = {
-  pageProps: any
+export type AppInitialProps<IP = any> = {
+  pageProps: IP
 }
 
 export type AppPropsType<
   R extends NextRouter = NextRouter,
-  P = {}
-> = AppInitialProps & {
+  P = {},
+  IP = any
+> = AppInitialProps<IP> & {
   Component: NextComponentType<NextPageContext, any, P>
   router: R
   __N_SSG?: boolean
