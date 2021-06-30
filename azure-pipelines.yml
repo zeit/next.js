@@ -144,3 +144,22 @@ stages:
           - script: |
               node run-tests.js -g $(group) --timings --azure
             displayName: 'Run tests'
+
+      - job: test_ie11_development
+        pool:
+          vmImage: 'windows-2019'
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: $(node_version)
+            displayName: 'Install Node.js'
+          - task: Cache@2
+            inputs:
+              # use deterministic cache key that is specific
+              # to this test run
+              key: $(Build.SourceVersion)
+              path: $(System.DefaultWorkingDirectory)
+            displayName: Cache Build
+          - script: |
+              yarn testonly --testPathPattern="/acceptance"
+            displayName: 'Run tests'
