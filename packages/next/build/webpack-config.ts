@@ -1425,6 +1425,7 @@ export default async function getBaseWebpackConfig(
     isDevelopment: dev,
     isServer,
     assetPrefix: config.assetPrefix || '',
+    cssLoaderOptions: config.cssLoaderOptions,
     sassOptions: config.sassOptions,
     productionBrowserSourceMaps: config.productionBrowserSourceMaps,
     future: config.future,

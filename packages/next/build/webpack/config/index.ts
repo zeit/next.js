@@ -12,6 +12,7 @@ export async function build(
     isDevelopment,
     isServer,
     assetPrefix,
+    cssLoaderOptions,
     sassOptions,
     productionBrowserSourceMaps,
     future,
@@ -22,6 +23,7 @@ export async function build(
     isDevelopment: boolean
     isServer: boolean
     assetPrefix: string
+    cssLoaderOptions: ConfigurationContext['cssLoaderOptions']
     sassOptions: any
     productionBrowserSourceMaps: boolean
     future: NextConfig['future']
@@ -40,6 +42,7 @@ export async function build(
         ? assetPrefix.slice(0, -1)
         : assetPrefix
       : '',
+    cssLoaderOptions,
     sassOptions,
     productionBrowserSourceMaps,
     future,
