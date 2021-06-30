@@ -11,6 +11,7 @@ import { execOnce } from '../../shared/lib/utils'
 import { defaultConfig, normalizeConfig } from './config-shared'
 import { loadWebpackHook } from './config-utils'
 import { ImageConfig, imageConfigDefault, VALID_LOADERS } from './image-config'
+import nativeImport from '../../lib/native-dynamic-import'
 import { loadEnvConfig } from '@next/env'
 
 export { DomainLocales, NextConfig, normalizeConfig } from './config-shared'
@@ -409,6 +410,23 @@ function assignDefaults(userConfig: { [key: string]: any }) {
   return result
 }
 
+async function findConfigFile(dir: string): Promise<string | undefined> {
+  const files = [CONFIG_FILE.replace(/\.js$/, '.mjs'), CONFIG_FILE]
+  return findUp(files, { cwd: dir })
+}
+
+async function importCjsOrEsm(mod: string): Promise<any> {
+  try {
+    return require(mod)
+  } catch (err) {
+    if (err.code === 'ERR_REQUIRE_ESM') {
+      const { default: defaultExport } = await nativeImport(mod)
+      return defaultExport
+    }
+    throw err
+  }
+}
+
 export default async function loadConfig(
   phase: string,
   dir: string,
@@ -421,11 +439,12 @@ export default async function loadConfig(
     return assignDefaults({ configOrigin: 'server', ...customConfig })
   }
 
-  const path = await findUp(CONFIG_FILE, { cwd: dir })
+  const path = await findConfigFile(dir)
 
   // If config file was found
   if (path?.length) {
-    const userConfigModule = require(path)
+    const userConfigModule = await importCjsOrEsm(path)
+
     const userConfig = normalizeConfig(
       phase,
       userConfigModule.default || userConfigModule
