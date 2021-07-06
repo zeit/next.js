@@ -118,26 +118,22 @@ export function runNextCommand(argv, options = {}) {
     }
 
     let stderrOutput = ''
-    if (options.stderr) {
-      instance.stderr.on('data', function (chunk) {
-        stderrOutput += chunk
+    instance.stderr.on('data', function (chunk) {
+      stderrOutput += chunk
 
-        if (options.stderr === 'log') {
-          console.log(chunk.toString())
-        }
-      })
-    }
+      if (options.stderr === 'log') {
+        console.log(chunk.toString())
+      }
+    })
 
     let stdoutOutput = ''
-    if (options.stdout) {
-      instance.stdout.on('data', function (chunk) {
-        stdoutOutput += chunk
+    instance.stdout.on('data', function (chunk) {
+      stdoutOutput += chunk
 
-        if (options.stdout === 'log') {
-          console.log(chunk.toString())
-        }
-      })
-    }
+      if (options.stdout === 'log') {
+        console.log(chunk.toString())
+      }
+    })
 
     instance.on('close', (code, signal) => {
       if (
@@ -146,7 +142,13 @@ export function runNextCommand(argv, options = {}) {
         !options.ignoreFail &&
         code !== 0
       ) {
-        return reject(new Error(`command failed with code ${code}`))
+        console.error({
+          stderrOutput,
+          stdoutOutput,
+        })
+        return reject(
+          new Error(`command "next ${argv.join(' ')}" failed with code ${code}`)
+        )
       }
 
       resolve({

@@ -54,7 +54,6 @@ const externals = {
   sass: 'sass',
   fibers: 'fibers',
 
-  chokidar: 'chokidar',
   'jest-worker': 'jest-worker',
 }
 // eslint-disable-next-line camelcase
@@ -179,14 +178,6 @@ export async function ncc_bfj(task, opts) {
     .source(opts.src || relative(__dirname, require.resolve('bfj')))
     .ncc({ packageName: 'bfj' })
     .target('compiled/bfj')
-}
-// eslint-disable-next-line camelcase
-externals['cacache'] = 'next/dist/compiled/cacache'
-export async function ncc_cacache(task, opts) {
-  await task
-    .source(opts.src || relative(__dirname, require.resolve('cacache')))
-    .ncc({ packageName: 'cacache' })
-    .target('compiled/cacache')
 }
 // eslint-disable-next-line camelcase
 externals['ci-info'] = 'next/dist/compiled/ci-info'
@@ -470,14 +461,7 @@ export async function ncc_postcss_scss(task, opts) {
     })
     .target('compiled/postcss-scss')
 }
-// eslint-disable-next-line camelcase
-externals['recast'] = 'next/dist/compiled/recast'
-export async function ncc_recast(task, opts) {
-  await task
-    .source(opts.src || relative(__dirname, require.resolve('recast')))
-    .ncc({ packageName: 'recast', externals })
-    .target('compiled/recast')
-}
+
 // eslint-disable-next-line camelcase
 externals['resolve-url-loader'] = 'next/dist/compiled/resolve-url-loader'
 export async function ncc_resolve_url_loader(task, opts) {
@@ -659,25 +643,11 @@ export async function ncc_mini_css_extract_plugin(task, opts) {
 }
 
 // eslint-disable-next-line camelcase
-export async function ncc_webpack_bundle4(task, opts) {
-  await task
-    .source(opts.src || 'bundles/webpack/bundle4.js')
-    .ncc({
-      packageName: 'webpack',
-      bundleName: 'webpack',
-      externals,
-      minify: false,
-      target: 'es5',
-    })
-    .target('compiled/webpack')
-}
-
-// eslint-disable-next-line camelcase
 export async function ncc_webpack_bundle5(task, opts) {
   await task
     .source(opts.src || 'bundles/webpack/bundle5.js')
     .ncc({
-      packageName: 'webpack5',
+      packageName: 'webpack',
       bundleName: 'webpack',
       customEmit(path) {
         if (path.endsWith('.runtime.js')) return `'./${basename(path)}'`
@@ -738,7 +708,6 @@ export async function ncc(task, opts) {
         'ncc_babel_bundle',
         'ncc_babel_bundle_packages',
         'ncc_bfj',
-        'ncc_cacache',
         'ncc_ci_info',
         'ncc_comment_json',
         'ncc_compression',
@@ -771,7 +740,6 @@ export async function ncc(task, opts) {
         'ncc_postcss_loader',
         'ncc_postcss_preset_env',
         'ncc_postcss_scss',
-        'ncc_recast',
         'ncc_resolve_url_loader',
         'ncc_sass_loader',
         'ncc_schema_utils',
@@ -785,7 +753,6 @@ export async function ncc(task, opts) {
         'ncc_text_table',
         'ncc_unistore',
         'ncc_web_vitals',
-        'ncc_webpack_bundle4',
         'ncc_webpack_bundle5',
         'ncc_webpack_bundle_packages',
         'ncc_webpack_sources',

@@ -412,7 +412,7 @@ export default async function loadConfig(
   customConfig?: object | null
 ) {
   await loadEnvConfig(dir, phase === PHASE_DEVELOPMENT_SERVER, Log)
-  await loadWebpackHook(phase, dir)
+  await loadWebpackHook()
 
   if (customConfig) {
     return assignDefaults({ configOrigin: 'server', ...customConfig })

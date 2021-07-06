@@ -14,11 +14,9 @@ import {
   File,
 } from 'next-test-utils'
 import { join } from 'path'
-import webpack from 'webpack'
 
 jest.setTimeout(1000 * 60 * 2)
 
-const isWebpack5 = parseInt(webpack.version) === 5
 let app
 let appPort
 const appDir = join(__dirname, '../')
@@ -103,14 +101,16 @@ function runTests(dev = false) {
   })
 }
 
-;(isWebpack5 ? describe : describe.skip)('Async modules', () => {
+describe('Async modules', () => {
   describe('dev mode', () => {
     beforeAll(async () => {
       appPort = await findPort()
       app = await launchApp(appDir, appPort)
     })
     afterAll(async () => {
-      await killApp(app)
+      if (app) {
+        await killApp(app)
+      }
     })
 
     runTests(true)
@@ -123,7 +123,9 @@ function runTests(dev = false) {
       app = await nextStart(appDir, appPort)
     })
     afterAll(async () => {
-      await killApp(app)
+      if (app) {
+        await killApp(app)
+      }
     })
 
     runTests()
@@ -138,7 +140,9 @@ function runTests(dev = false) {
     })
     afterAll(async () => {
       await nextConfig.restore()
-      await killApp(app)
+      if (app) {
+        await killApp(app)
+      }
     })
 
     runTests()
