@@ -488,6 +488,7 @@ export default function Image({
         position: 'relative',
 
         boxSizing: 'border-box',
+        verticalAlign: 'bottom',
         margin: 0,
       }
       sizerStyle = { display: 'block', boxSizing: 'border-box', paddingTop }
@@ -499,6 +500,7 @@ export default function Image({
         overflow: 'hidden',
         position: 'relative',
         boxSizing: 'border-box',
+        verticalAlign: 'bottom',
         margin: 0,
       }
       sizerStyle = {
@@ -512,6 +514,7 @@ export default function Image({
       wrapperStyle = {
         overflow: 'hidden',
         boxSizing: 'border-box',
+        verticalAlign: 'bottom',
         display: 'inline-block',
         position: 'relative',
         width: widthInt,
@@ -535,6 +538,7 @@ export default function Image({
       right: 0,
 
       boxSizing: 'border-box',
+      verticalAlign: 'bottom',
       margin: 0,
     }
   } else {
