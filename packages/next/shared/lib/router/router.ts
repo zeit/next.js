@@ -320,7 +320,10 @@ export function resolveHref(
     // if the origin didn't change, it means we received a relative href
     const resolvedHref =
       finalUrl.origin === base.origin
-        ? finalUrl.href.slice(finalUrl.origin.length)
+        ? prefixSlashFollowOriginalHref(
+            href.toString(),
+            finalUrl.href.slice(finalUrl.origin.length)
+          )
         : finalUrl.href
 
     return (resolveAs
@@ -329,6 +332,17 @@ export function resolveHref(
   } catch (_) {
     return (resolveAs ? [urlAsString] : urlAsString) as string
   }
+}
+
+function prefixSlashFollowOriginalHref(
+  originalHref: string,
+  targetHref: string
+) {
+  if (!originalHref.startsWith('/') && targetHref.startsWith('/')) {
+    return targetHref.slice(1)
+  }
+
+  return targetHref
 }
 
 function stripOrigin(url: string) {
